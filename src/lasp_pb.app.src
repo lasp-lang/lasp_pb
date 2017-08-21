@@ -1,0 +1,14 @@
+{application, lasp_pb,
+ [{description, "A protobuffer library for Lasp"},
+  {vsn, "0.0.1"},
+  {registered, []},
+  {applications,
+   [kernel,
+    stdlib
+   ]},
+  {env,[]},
+  {modules, []},
+  {maintainers,["Goncalo Tomas"]},
+  {links,[{"Github","https://github.com/lasp-lang/lasp_pb"}]},
+  {licenses,["Apache 2"]}
+ ]}.

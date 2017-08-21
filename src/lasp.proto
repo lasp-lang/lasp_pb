@@ -1,0 +1,83 @@
+/*
+ * -------------------------------------------------------------------
+ * lasp.proto: Protocol buffers for Lasp
+ * -------------------------------------------------------------------
+ *
+ * NOTE: IMPORTANT
+ * Any change to the definitions in this file REQUIRES recompiling the erlang
+ * protobuffer source code using the rebar3 gpb plugin. Also, be sure to commit
+ * all the changed source files along with the modified version of this file!
+ */
+syntax = "proto3";
+
+message req {
+  oneof u {
+    opget get = 1;
+    opupdate put = 2;
+  }
+}
+
+message opget {
+  required string key = 1;
+  required string type = 2;
+}
+
+message opupdate {
+  required opget k = 1;
+  required entry e = 2;
+  required string actor = 3;
+}
+
+message entry {
+  oneof u {
+    int64  int = 1;
+    string str = 2;
+    string atm = 3;
+    pair    ii = 4;
+    triple  iii = 5;
+  }
+}
+
+message pair {
+  required entry a = 1;
+  required entry b = 2;
+}
+
+message triple {
+  required entry a = 1;
+  required entry b = 2;
+  required entry c = 3;
+}
+
+// CRDT state messages
+
+message valcounter {
+  required int64 val = 1;
+}
+
+message valset {
+  repeated string elems = 1;
+}
+
+message valmap {
+  repeated mapentry entries = 1;
+}
+
+message valreg {
+  required string val = 1;
+}
+
+message mapentry {
+  required string key = 1;
+  required string ktype = 2;
+  required mapfield val = 3;
+}
+
+message mapfield {
+  oneof v {
+    valcounter c = 1;
+    valset s = 2;
+    valmap m = 3;
+    valreg r = 4;
+  }
+}

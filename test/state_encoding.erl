@@ -2,6 +2,7 @@
 -include("lasp_pb.hrl").
 
 -ifdef(TEST).
+-import(lasp_pb_codec, [encode/1, decode/1]).
 -include_lib("eunit/include/eunit.hrl").
 
 counter_val_test() ->
@@ -52,64 +53,39 @@ nested_map_val_test() ->
       ]},
     encode_decode(Op, valmap).
 
-%% Encoding
-encode(#valmap{entries = ListEntries}) ->
-    #valmap{entries = lists:map(fun encode/1,ListEntries)};
+reqresp_error_test() ->
+    Op = #reqresp{v = {error, "Something went wrong!"}},
+    encode_decode(Op, reqresp).
 
-encode(#mapentry{key = K, ktype = KT, val = Val}) ->
-    #mapentry{key = K, ktype = atom_to_list(KT), val = encode(Val)};
+reqresp_counter_test() ->
+    Op = #reqresp{v = {ctr, #valcounter{val = 42}}},
+    encode_decode(Op, reqresp).
 
-encode(#mapfield{v = {m, Map}}) ->
-    #mapfield{v = {m, encode(Map)}};
+reqresp_set_test() ->
+    Op = #reqresp{v = {set, #valset{elems = ["aAa", "BbB", "CCCcccCCC"]}}},
+    encode_decode(Op, reqresp).
 
-%% Catch all clause
-encode(A) ->
-    A.
+reqresp_map_test() ->
+    Op = #reqresp{v = {map, #valmap{
+      entries = [
+        #mapentry{key = "map_key",
+                  ktype = gcounter,
+                  val = #mapfield{
+                    v = {c, #valcounter{val=1234567890987654321}}
+                  }}
+      ]}}},
+    encode_decode(Op, reqresp).
 
-decode(#valmap{entries = ListEntries}) ->
-    #valmap{entries = lists:map(fun decode/1,ListEntries)};
-
-decode(#mapentry{key = K, ktype = KT, val = V}) ->
-    #mapentry{key = binary_to_list(K),
-              ktype = binary_to_atom(KT, utf8),
-              val = decode(V)};
-
-decode(#mapfield{v = {r, Reg}}) ->
-    #mapfield{v = {r, decode(Reg)}};
-
-decode(#mapfield{v = {m, Map}}) ->
-    #mapfield{v = {m, decode(Map)}};
-
-decode(#mapfield{v = {s, Set}}) ->
-    #mapfield{v = {s, decode(Set)}};
-
-decode(#mapfield{v = {c, Counter}}) ->
-    #mapfield{v = {c, decode(Counter)}};
-
-decode(#valreg{val=Val}) ->
-    #valreg{val=binary_to_list(Val)};
-
-decode(#valset{elems=ListElems}) ->
-    #valset{elems=decode_string_list(ListElems)};
-
-decode(#valcounter{val=Num}) when is_integer(Num) ->
-    #valcounter{val = Num}.
-
-decode_string_list(List) ->
-    decode_string_list(List, []).
-
-decode_string_list([], Res) ->
-    lists:reverse(Res);
-decode_string_list([H|T], Res) ->
-    H1 = binary_to_list(H),
-    decode_string_list(T, [H1|Res]).
+reqresp_reg_test() ->
+    Op = #reqresp{v = {reg, #valreg{val = "Lasp Lasp Lasp Lasp Lasp Lasp Lasp Lasp Lasp Lasp"}}},
+    encode_decode(Op, reqresp).
 
 encode_decode(Op, RecordType) ->
-    io:format("original operation: ~p~n", [Op]),
-    io:format("internal encode(Op): ~p~n", [encode(Op)]),
+    % io:format("original operation: ~p~n", [Op]),
+    % io:format("internal encode(Op): ~p~n", [encode(Op)]),
     Encoded = lasp_pb:encode_msg(encode(Op)),
-    io:format("encoded form: ~p~n",[Encoded]),
+    % io:format("encoded form: ~p~n",[Encoded]),
     Decoded = decode(lasp_pb:decode_msg(Encoded, RecordType)),
-    io:format("decoded form: ~p~n",[Decoded]),
+    % io:format("decoded form: ~p~n",[Decoded]),
     true = Op =:= Decoded.
 -endif.

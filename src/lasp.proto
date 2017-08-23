@@ -24,7 +24,7 @@ message opget {
 
 message opupdate {
   required opget k = 1;
-  required entry e = 2;
+  repeated entry e = 2;
   required string actor = 3;
 }
 
@@ -50,6 +50,16 @@ message triple {
 }
 
 // CRDT state messages
+
+message reqresp {
+  oneof v {
+    string error = 1;
+    valcounter ctr = 2;
+    valset set = 3;
+    valmap map = 4;
+    valreg reg = 5;
+  }
+}
 
 message valcounter {
   required int64 val = 1;

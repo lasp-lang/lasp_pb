@@ -26,7 +26,7 @@
 -define('OPUPDATE_PB_H', true).
 -record(opupdate,
         {k,                             % = 1, {msg,opget}
-         e,                             % = 2, {msg,entry}
+         e = [],                        % = 2, [{msg,entry}]
          actor                          % = 3, string
         }).
 -endif.
@@ -52,6 +52,13 @@
         {a,                             % = 1, {msg,entry}
          b,                             % = 2, {msg,entry}
          c                              % = 3, {msg,entry}
+        }).
+-endif.
+
+-ifndef('REQRESP_PB_H').
+-define('REQRESP_PB_H', true).
+-record(reqresp,
+        {v                              % oneof
         }).
 -endif.
 

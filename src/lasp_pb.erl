@@ -45,6 +45,7 @@ encode_msg(Msg, Opts) ->
       #entry{} -> e_msg_entry(Msg, TrUserData);
       #pair{} -> e_msg_pair(Msg, TrUserData);
       #triple{} -> e_msg_triple(Msg, TrUserData);
+      #reqresp{} -> e_msg_reqresp(Msg, TrUserData);
       #valcounter{} -> e_msg_valcounter(Msg, TrUserData);
       #valset{} -> e_msg_valset(Msg, TrUserData);
       #valmap{} -> e_msg_valmap(Msg, TrUserData);
@@ -102,7 +103,9 @@ e_msg_opupdate(#opupdate{k = F1, e = F2, actor = F3},
 	 end,
     B2 = begin
 	   TrF2 = id(F2, TrUserData),
-	   e_mfield_opupdate_e(TrF2, <<B1/binary, 18>>, TrUserData)
+	   if TrF2 == [] -> B1;
+	      true -> e_field_opupdate_e(TrF2, B1, TrUserData)
+	   end
 	 end,
     begin
       TrF3 = id(F3, TrUserData),
@@ -175,6 +178,44 @@ e_msg_triple(#triple{a = F1, b = F2, c = F3}, Bin,
     begin
       TrF3 = id(F3, TrUserData),
       e_mfield_triple_c(TrF3, <<B2/binary, 26>>, TrUserData)
+    end.
+
+e_msg_reqresp(Msg, TrUserData) ->
+    e_msg_reqresp(Msg, <<>>, TrUserData).
+
+
+e_msg_reqresp(#reqresp{v = F1}, Bin, TrUserData) ->
+    case F1 of
+      undefined -> Bin;
+      {error, OF1} ->
+	  begin
+	    TrOF1 = id(OF1, TrUserData),
+	    e_type_string(TrOF1, <<Bin/binary, 10>>)
+	  end;
+      {ctr, OF1} ->
+	  begin
+	    TrOF1 = id(OF1, TrUserData),
+	    e_mfield_reqresp_ctr(TrOF1, <<Bin/binary, 18>>,
+				 TrUserData)
+	  end;
+      {set, OF1} ->
+	  begin
+	    TrOF1 = id(OF1, TrUserData),
+	    e_mfield_reqresp_set(TrOF1, <<Bin/binary, 26>>,
+				 TrUserData)
+	  end;
+      {map, OF1} ->
+	  begin
+	    TrOF1 = id(OF1, TrUserData),
+	    e_mfield_reqresp_map(TrOF1, <<Bin/binary, 34>>,
+				 TrUserData)
+	  end;
+      {reg, OF1} ->
+	  begin
+	    TrOF1 = id(OF1, TrUserData),
+	    e_mfield_reqresp_reg(TrOF1, <<Bin/binary, 42>>,
+				 TrUserData)
+	  end
     end.
 
 e_msg_valcounter(Msg, TrUserData) ->
@@ -296,6 +337,13 @@ e_mfield_opupdate_e(Msg, Bin, TrUserData) ->
     Bin2 = e_varint(byte_size(SubBin), Bin),
     <<Bin2/binary, SubBin/binary>>.
 
+e_field_opupdate_e([Elem | Rest], Bin, TrUserData) ->
+    Bin2 = <<Bin/binary, 18>>,
+    Bin3 = e_mfield_opupdate_e(id(Elem, TrUserData), Bin2,
+			       TrUserData),
+    e_field_opupdate_e(Rest, Bin3, TrUserData);
+e_field_opupdate_e([], Bin, _TrUserData) -> Bin.
+
 e_mfield_entry_ii(Msg, Bin, TrUserData) ->
     SubBin = e_msg_pair(Msg, <<>>, TrUserData),
     Bin2 = e_varint(byte_size(SubBin), Bin),
@@ -328,6 +376,26 @@ e_mfield_triple_b(Msg, Bin, TrUserData) ->
 
 e_mfield_triple_c(Msg, Bin, TrUserData) ->
     SubBin = e_msg_entry(Msg, <<>>, TrUserData),
+    Bin2 = e_varint(byte_size(SubBin), Bin),
+    <<Bin2/binary, SubBin/binary>>.
+
+e_mfield_reqresp_ctr(Msg, Bin, TrUserData) ->
+    SubBin = e_msg_valcounter(Msg, <<>>, TrUserData),
+    Bin2 = e_varint(byte_size(SubBin), Bin),
+    <<Bin2/binary, SubBin/binary>>.
+
+e_mfield_reqresp_set(Msg, Bin, TrUserData) ->
+    SubBin = e_msg_valset(Msg, <<>>, TrUserData),
+    Bin2 = e_varint(byte_size(SubBin), Bin),
+    <<Bin2/binary, SubBin/binary>>.
+
+e_mfield_reqresp_map(Msg, Bin, TrUserData) ->
+    SubBin = e_msg_valmap(Msg, <<>>, TrUserData),
+    Bin2 = e_varint(byte_size(SubBin), Bin),
+    <<Bin2/binary, SubBin/binary>>.
+
+e_mfield_reqresp_reg(Msg, Bin, TrUserData) ->
+    SubBin = e_msg_valreg(Msg, <<>>, TrUserData),
     Bin2 = e_varint(byte_size(SubBin), Bin),
     <<Bin2/binary, SubBin/binary>>.
 
@@ -427,6 +495,7 @@ decode_msg(Bin, MsgName, Opts) when is_binary(Bin) ->
       entry -> d_msg_entry(Bin, TrUserData);
       pair -> d_msg_pair(Bin, TrUserData);
       triple -> d_msg_triple(Bin, TrUserData);
+      reqresp -> d_msg_reqresp(Bin, TrUserData);
       valcounter -> d_msg_valcounter(Bin, TrUserData);
       valset -> d_msg_valset(Bin, TrUserData);
       valmap -> d_msg_valmap(Bin, TrUserData);
@@ -671,8 +740,7 @@ skip_64_opget(<<_:64, Rest/binary>>, Z1, Z2, F1, F2,
 
 d_msg_opupdate(Bin, TrUserData) ->
     dfp_read_field_def_opupdate(Bin, 0, 0,
-				id(undefined, TrUserData),
-				id(undefined, TrUserData),
+				id(undefined, TrUserData), id([], TrUserData),
 				id(undefined, TrUserData), TrUserData).
 
 dfp_read_field_def_opupdate(<<10, Rest/binary>>, Z1, Z2,
@@ -688,8 +756,9 @@ dfp_read_field_def_opupdate(<<26, Rest/binary>>, Z1, Z2,
     d_field_opupdate_actor(Rest, Z1, Z2, F1, F2, F3,
 			   TrUserData);
 dfp_read_field_def_opupdate(<<>>, 0, 0, F1, F2, F3,
-			    _) ->
-    #opupdate{k = F1, e = F2, actor = F3};
+			    TrUserData) ->
+    #opupdate{k = F1, e = lists_reverse(F2, TrUserData),
+	      actor = F3};
 dfp_read_field_def_opupdate(Other, Z1, Z2, F1, F2, F3,
 			    TrUserData) ->
     dg_read_field_def_opupdate(Other, Z1, Z2, F1, F2, F3,
@@ -728,8 +797,10 @@ dg_read_field_def_opupdate(<<0:1, X:7, Rest/binary>>, N,
 		skip_32_opupdate(Rest, 0, 0, F1, F2, F3, TrUserData)
 	  end
     end;
-dg_read_field_def_opupdate(<<>>, 0, 0, F1, F2, F3, _) ->
-    #opupdate{k = F1, e = F2, actor = F3}.
+dg_read_field_def_opupdate(<<>>, 0, 0, F1, F2, F3,
+			   TrUserData) ->
+    #opupdate{k = F1, e = lists_reverse(F2, TrUserData),
+	      actor = F3}.
 
 d_field_opupdate_k(<<1:1, X:7, Rest/binary>>, N, Acc,
 		   F1, F2, F3, TrUserData)
@@ -761,12 +832,8 @@ d_field_opupdate_e(<<0:1, X:7, Rest/binary>>, N, Acc,
     <<Bs:Len/binary, Rest2/binary>> = Rest,
     NewFValue = id(d_msg_entry(Bs, TrUserData), TrUserData),
     dfp_read_field_def_opupdate(Rest2, 0, 0, F1,
-				if F2 == undefined -> NewFValue;
-				   true ->
-				       merge_msg_entry(F2, NewFValue,
-						       TrUserData)
-				end,
-				F3, TrUserData).
+				cons(NewFValue, F2, TrUserData), F3,
+				TrUserData).
 
 
 d_field_opupdate_actor(<<1:1, X:7, Rest/binary>>, N,
@@ -1269,6 +1336,205 @@ skip_64_triple(<<_:64, Rest/binary>>, Z1, Z2, F1, F2,
 	       F3, TrUserData) ->
     dfp_read_field_def_triple(Rest, Z1, Z2, F1, F2, F3,
 			      TrUserData).
+
+
+d_msg_reqresp(Bin, TrUserData) ->
+    dfp_read_field_def_reqresp(Bin, 0, 0,
+			       id(undefined, TrUserData), TrUserData).
+
+dfp_read_field_def_reqresp(<<10, Rest/binary>>, Z1, Z2,
+			   F1, TrUserData) ->
+    d_field_reqresp_error(Rest, Z1, Z2, F1, TrUserData);
+dfp_read_field_def_reqresp(<<18, Rest/binary>>, Z1, Z2,
+			   F1, TrUserData) ->
+    d_field_reqresp_ctr(Rest, Z1, Z2, F1, TrUserData);
+dfp_read_field_def_reqresp(<<26, Rest/binary>>, Z1, Z2,
+			   F1, TrUserData) ->
+    d_field_reqresp_set(Rest, Z1, Z2, F1, TrUserData);
+dfp_read_field_def_reqresp(<<34, Rest/binary>>, Z1, Z2,
+			   F1, TrUserData) ->
+    d_field_reqresp_map(Rest, Z1, Z2, F1, TrUserData);
+dfp_read_field_def_reqresp(<<42, Rest/binary>>, Z1, Z2,
+			   F1, TrUserData) ->
+    d_field_reqresp_reg(Rest, Z1, Z2, F1, TrUserData);
+dfp_read_field_def_reqresp(<<>>, 0, 0, F1, _) ->
+    #reqresp{v = F1};
+dfp_read_field_def_reqresp(Other, Z1, Z2, F1,
+			   TrUserData) ->
+    dg_read_field_def_reqresp(Other, Z1, Z2, F1,
+			      TrUserData).
+
+dg_read_field_def_reqresp(<<1:1, X:7, Rest/binary>>, N,
+			  Acc, F1, TrUserData)
+    when N < 32 - 7 ->
+    dg_read_field_def_reqresp(Rest, N + 7, X bsl N + Acc,
+			      F1, TrUserData);
+dg_read_field_def_reqresp(<<0:1, X:7, Rest/binary>>, N,
+			  Acc, F1, TrUserData) ->
+    Key = X bsl N + Acc,
+    case Key of
+      10 -> d_field_reqresp_error(Rest, 0, 0, F1, TrUserData);
+      18 -> d_field_reqresp_ctr(Rest, 0, 0, F1, TrUserData);
+      26 -> d_field_reqresp_set(Rest, 0, 0, F1, TrUserData);
+      34 -> d_field_reqresp_map(Rest, 0, 0, F1, TrUserData);
+      42 -> d_field_reqresp_reg(Rest, 0, 0, F1, TrUserData);
+      _ ->
+	  case Key band 7 of
+	    0 -> skip_varint_reqresp(Rest, 0, 0, F1, TrUserData);
+	    1 -> skip_64_reqresp(Rest, 0, 0, F1, TrUserData);
+	    2 ->
+		skip_length_delimited_reqresp(Rest, 0, 0, F1,
+					      TrUserData);
+	    3 ->
+		skip_group_reqresp(Rest, Key bsr 3, 0, F1, TrUserData);
+	    5 -> skip_32_reqresp(Rest, 0, 0, F1, TrUserData)
+	  end
+    end;
+dg_read_field_def_reqresp(<<>>, 0, 0, F1, _) ->
+    #reqresp{v = F1}.
+
+d_field_reqresp_error(<<1:1, X:7, Rest/binary>>, N, Acc,
+		      F1, TrUserData)
+    when N < 57 ->
+    d_field_reqresp_error(Rest, N + 7, X bsl N + Acc, F1,
+			  TrUserData);
+d_field_reqresp_error(<<0:1, X:7, Rest/binary>>, N, Acc,
+		      _, TrUserData) ->
+    Len = X bsl N + Acc,
+    <<Bytes:Len/binary, Rest2/binary>> = Rest,
+    NewFValue = binary:copy(Bytes),
+    dfp_read_field_def_reqresp(Rest2, 0, 0,
+			       {error, NewFValue}, TrUserData).
+
+
+d_field_reqresp_ctr(<<1:1, X:7, Rest/binary>>, N, Acc,
+		    F1, TrUserData)
+    when N < 57 ->
+    d_field_reqresp_ctr(Rest, N + 7, X bsl N + Acc, F1,
+			TrUserData);
+d_field_reqresp_ctr(<<0:1, X:7, Rest/binary>>, N, Acc,
+		    F1, TrUserData) ->
+    Len = X bsl N + Acc,
+    <<Bs:Len/binary, Rest2/binary>> = Rest,
+    NewFValue = id(d_msg_valcounter(Bs, TrUserData),
+		   TrUserData),
+    dfp_read_field_def_reqresp(Rest2, 0, 0,
+			       case F1 of
+				 undefined -> {ctr, NewFValue};
+				 {ctr, MVF1} ->
+				     {ctr,
+				      merge_msg_valcounter(MVF1, NewFValue,
+							   TrUserData)};
+				 _ -> {ctr, NewFValue}
+			       end,
+			       TrUserData).
+
+
+d_field_reqresp_set(<<1:1, X:7, Rest/binary>>, N, Acc,
+		    F1, TrUserData)
+    when N < 57 ->
+    d_field_reqresp_set(Rest, N + 7, X bsl N + Acc, F1,
+			TrUserData);
+d_field_reqresp_set(<<0:1, X:7, Rest/binary>>, N, Acc,
+		    F1, TrUserData) ->
+    Len = X bsl N + Acc,
+    <<Bs:Len/binary, Rest2/binary>> = Rest,
+    NewFValue = id(d_msg_valset(Bs, TrUserData),
+		   TrUserData),
+    dfp_read_field_def_reqresp(Rest2, 0, 0,
+			       case F1 of
+				 undefined -> {set, NewFValue};
+				 {set, MVF1} ->
+				     {set,
+				      merge_msg_valset(MVF1, NewFValue,
+						       TrUserData)};
+				 _ -> {set, NewFValue}
+			       end,
+			       TrUserData).
+
+
+d_field_reqresp_map(<<1:1, X:7, Rest/binary>>, N, Acc,
+		    F1, TrUserData)
+    when N < 57 ->
+    d_field_reqresp_map(Rest, N + 7, X bsl N + Acc, F1,
+			TrUserData);
+d_field_reqresp_map(<<0:1, X:7, Rest/binary>>, N, Acc,
+		    F1, TrUserData) ->
+    Len = X bsl N + Acc,
+    <<Bs:Len/binary, Rest2/binary>> = Rest,
+    NewFValue = id(d_msg_valmap(Bs, TrUserData),
+		   TrUserData),
+    dfp_read_field_def_reqresp(Rest2, 0, 0,
+			       case F1 of
+				 undefined -> {map, NewFValue};
+				 {map, MVF1} ->
+				     {map,
+				      merge_msg_valmap(MVF1, NewFValue,
+						       TrUserData)};
+				 _ -> {map, NewFValue}
+			       end,
+			       TrUserData).
+
+
+d_field_reqresp_reg(<<1:1, X:7, Rest/binary>>, N, Acc,
+		    F1, TrUserData)
+    when N < 57 ->
+    d_field_reqresp_reg(Rest, N + 7, X bsl N + Acc, F1,
+			TrUserData);
+d_field_reqresp_reg(<<0:1, X:7, Rest/binary>>, N, Acc,
+		    F1, TrUserData) ->
+    Len = X bsl N + Acc,
+    <<Bs:Len/binary, Rest2/binary>> = Rest,
+    NewFValue = id(d_msg_valreg(Bs, TrUserData),
+		   TrUserData),
+    dfp_read_field_def_reqresp(Rest2, 0, 0,
+			       case F1 of
+				 undefined -> {reg, NewFValue};
+				 {reg, MVF1} ->
+				     {reg,
+				      merge_msg_valreg(MVF1, NewFValue,
+						       TrUserData)};
+				 _ -> {reg, NewFValue}
+			       end,
+			       TrUserData).
+
+
+skip_varint_reqresp(<<1:1, _:7, Rest/binary>>, Z1, Z2,
+		    F1, TrUserData) ->
+    skip_varint_reqresp(Rest, Z1, Z2, F1, TrUserData);
+skip_varint_reqresp(<<0:1, _:7, Rest/binary>>, Z1, Z2,
+		    F1, TrUserData) ->
+    dfp_read_field_def_reqresp(Rest, Z1, Z2, F1,
+			       TrUserData).
+
+
+skip_length_delimited_reqresp(<<1:1, X:7, Rest/binary>>,
+			      N, Acc, F1, TrUserData)
+    when N < 57 ->
+    skip_length_delimited_reqresp(Rest, N + 7,
+				  X bsl N + Acc, F1, TrUserData);
+skip_length_delimited_reqresp(<<0:1, X:7, Rest/binary>>,
+			      N, Acc, F1, TrUserData) ->
+    Length = X bsl N + Acc,
+    <<_:Length/binary, Rest2/binary>> = Rest,
+    dfp_read_field_def_reqresp(Rest2, 0, 0, F1, TrUserData).
+
+
+skip_group_reqresp(Bin, FNum, Z2, F1, TrUserData) ->
+    {_, Rest} = read_group(Bin, FNum),
+    dfp_read_field_def_reqresp(Rest, 0, Z2, F1, TrUserData).
+
+
+skip_32_reqresp(<<_:32, Rest/binary>>, Z1, Z2, F1,
+		TrUserData) ->
+    dfp_read_field_def_reqresp(Rest, Z1, Z2, F1,
+			       TrUserData).
+
+
+skip_64_reqresp(<<_:64, Rest/binary>>, Z1, Z2, F1,
+		TrUserData) ->
+    dfp_read_field_def_reqresp(Rest, Z1, Z2, F1,
+			       TrUserData).
 
 
 d_msg_valcounter(Bin, TrUserData) ->
@@ -2044,6 +2310,7 @@ merge_msgs(Prev, New, Opts)
       #entry{} -> merge_msg_entry(Prev, New, TrUserData);
       #pair{} -> merge_msg_pair(Prev, New, TrUserData);
       #triple{} -> merge_msg_triple(Prev, New, TrUserData);
+      #reqresp{} -> merge_msg_reqresp(Prev, New, TrUserData);
       #valcounter{} ->
 	  merge_msg_valcounter(Prev, New, TrUserData);
       #valset{} -> merge_msg_valset(Prev, New, TrUserData);
@@ -2081,7 +2348,7 @@ merge_msg_opupdate(#opupdate{k = PFk, e = PFe},
 		  end,
 	      e =
 		  if PFe /= undefined, NFe /= undefined ->
-			 merge_msg_entry(PFe, NFe, TrUserData);
+			 'erlang_++'(PFe, NFe, TrUserData);
 		     PFe == undefined -> NFe;
 		     NFe == undefined -> PFe
 		  end,
@@ -2134,6 +2401,22 @@ merge_msg_triple(#triple{a = PFa, b = PFb, c = PFc},
 		   PFc == undefined -> NFc;
 		   NFc == undefined -> PFc
 		end}.
+
+merge_msg_reqresp(#reqresp{v = PFv}, #reqresp{v = NFv},
+		  TrUserData) ->
+    #reqresp{v =
+		 case {PFv, NFv} of
+		   {{ctr, OPFv}, {ctr, ONFv}} ->
+		       {ctr, merge_msg_valcounter(OPFv, ONFv, TrUserData)};
+		   {{set, OPFv}, {set, ONFv}} ->
+		       {set, merge_msg_valset(OPFv, ONFv, TrUserData)};
+		   {{map, OPFv}, {map, ONFv}} ->
+		       {map, merge_msg_valmap(OPFv, ONFv, TrUserData)};
+		   {{reg, OPFv}, {reg, ONFv}} ->
+		       {reg, merge_msg_valreg(OPFv, ONFv, TrUserData)};
+		   {_, undefined} -> PFv;
+		   _ -> NFv
+		 end}.
 
 merge_msg_valcounter(#valcounter{},
 		     #valcounter{val = NFval}, _) ->
@@ -2201,6 +2484,7 @@ verify_msg(Msg, Opts) ->
       #entry{} -> v_msg_entry(Msg, [entry], TrUserData);
       #pair{} -> v_msg_pair(Msg, [pair], TrUserData);
       #triple{} -> v_msg_triple(Msg, [triple], TrUserData);
+      #reqresp{} -> v_msg_reqresp(Msg, [reqresp], TrUserData);
       #valcounter{} ->
 	  v_msg_valcounter(Msg, [valcounter], TrUserData);
       #valset{} -> v_msg_valset(Msg, [valset], TrUserData);
@@ -2238,7 +2522,14 @@ v_msg_opget(X, Path, _TrUserData) ->
 v_msg_opupdate(#opupdate{k = F1, e = F2, actor = F3},
 	       Path, TrUserData) ->
     v_msg_opget(F1, [k | Path], TrUserData),
-    v_msg_entry(F2, [e | Path], TrUserData),
+    if is_list(F2) ->
+	   _ = [v_msg_entry(Elem, [e | Path], TrUserData)
+		|| Elem <- F2],
+	   ok;
+       true ->
+	   mk_type_error({invalid_list_of, {msg, entry}}, F2,
+			 [e | Path])
+    end,
     v_type_string(F3, [actor | Path]),
     ok;
 v_msg_opupdate(X, Path, _TrUserData) ->
@@ -2278,6 +2569,23 @@ v_msg_triple(#triple{a = F1, b = F2, c = F3}, Path,
     ok;
 v_msg_triple(X, Path, _TrUserData) ->
     mk_type_error({expected_msg, triple}, X, Path).
+
+-dialyzer({nowarn_function,v_msg_reqresp/3}).
+v_msg_reqresp(#reqresp{v = F1}, Path, TrUserData) ->
+    case F1 of
+      undefined -> ok;
+      {error, OF1} -> v_type_string(OF1, [error, v | Path]);
+      {ctr, OF1} ->
+	  v_msg_valcounter(OF1, [ctr, v | Path], TrUserData);
+      {set, OF1} ->
+	  v_msg_valset(OF1, [set, v | Path], TrUserData);
+      {map, OF1} ->
+	  v_msg_valmap(OF1, [map, v | Path], TrUserData);
+      {reg, OF1} ->
+	  v_msg_valreg(OF1, [reg, v | Path], TrUserData);
+      _ -> mk_type_error(invalid_oneof, F1, [v | Path])
+    end,
+    ok.
 
 -dialyzer({nowarn_function,v_msg_valcounter/3}).
 v_msg_valcounter(#valcounter{val = F1}, Path, _) ->
@@ -2419,7 +2727,7 @@ get_msg_defs() ->
       [#field{name = k, fnum = 1, rnum = 2,
 	      type = {msg, opget}, occurrence = required, opts = []},
        #field{name = e, fnum = 2, rnum = 3,
-	      type = {msg, entry}, occurrence = required, opts = []},
+	      type = {msg, entry}, occurrence = repeated, opts = []},
        #field{name = actor, fnum = 3, rnum = 4, type = string,
 	      occurrence = required, opts = []}]},
      {{msg, entry},
@@ -2451,6 +2759,23 @@ get_msg_defs() ->
        #field{name = c, fnum = 3, rnum = 4,
 	      type = {msg, entry}, occurrence = required,
 	      opts = []}]},
+     {{msg, reqresp},
+      [#gpb_oneof{name = v, rnum = 2,
+		  fields =
+		      [#field{name = error, fnum = 1, rnum = 2, type = string,
+			      occurrence = optional, opts = []},
+		       #field{name = ctr, fnum = 2, rnum = 2,
+			      type = {msg, valcounter}, occurrence = optional,
+			      opts = []},
+		       #field{name = set, fnum = 3, rnum = 2,
+			      type = {msg, valset}, occurrence = optional,
+			      opts = []},
+		       #field{name = map, fnum = 4, rnum = 2,
+			      type = {msg, valmap}, occurrence = optional,
+			      opts = []},
+		       #field{name = reg, fnum = 5, rnum = 2,
+			      type = {msg, valreg}, occurrence = optional,
+			      opts = []}]}]},
      {{msg, valcounter},
       [#field{name = val, fnum = 1, rnum = 2, type = int64,
 	      occurrence = required, opts = []}]},
@@ -2490,16 +2815,16 @@ get_msg_defs() ->
 
 
 get_msg_names() ->
-    [req, opget, opupdate, entry, pair, triple, valcounter,
-     valset, valmap, valreg, mapentry, mapfield].
+    [req, opget, opupdate, entry, pair, triple, reqresp,
+     valcounter, valset, valmap, valreg, mapentry, mapfield].
 
 
 get_group_names() -> [].
 
 
 get_msg_or_group_names() ->
-    [req, opget, opupdate, entry, pair, triple, valcounter,
-     valset, valmap, valreg, mapentry, mapfield].
+    [req, opget, opupdate, entry, pair, triple, reqresp,
+     valcounter, valset, valmap, valreg, mapentry, mapfield].
 
 
 get_enum_names() -> [].
@@ -2535,7 +2860,7 @@ find_msg_def(opupdate) ->
     [#field{name = k, fnum = 1, rnum = 2,
 	    type = {msg, opget}, occurrence = required, opts = []},
      #field{name = e, fnum = 2, rnum = 3,
-	    type = {msg, entry}, occurrence = required, opts = []},
+	    type = {msg, entry}, occurrence = repeated, opts = []},
      #field{name = actor, fnum = 3, rnum = 4, type = string,
 	    occurrence = required, opts = []}];
 find_msg_def(entry) ->
@@ -2565,6 +2890,23 @@ find_msg_def(triple) ->
 	    type = {msg, entry}, occurrence = required, opts = []},
      #field{name = c, fnum = 3, rnum = 4,
 	    type = {msg, entry}, occurrence = required, opts = []}];
+find_msg_def(reqresp) ->
+    [#gpb_oneof{name = v, rnum = 2,
+		fields =
+		    [#field{name = error, fnum = 1, rnum = 2, type = string,
+			    occurrence = optional, opts = []},
+		     #field{name = ctr, fnum = 2, rnum = 2,
+			    type = {msg, valcounter}, occurrence = optional,
+			    opts = []},
+		     #field{name = set, fnum = 3, rnum = 2,
+			    type = {msg, valset}, occurrence = optional,
+			    opts = []},
+		     #field{name = map, fnum = 4, rnum = 2,
+			    type = {msg, valmap}, occurrence = optional,
+			    opts = []},
+		     #field{name = reg, fnum = 5, rnum = 2,
+			    type = {msg, valreg}, occurrence = optional,
+			    opts = []}]}];
 find_msg_def(valcounter) ->
     [#field{name = val, fnum = 1, rnum = 2, type = int64,
 	    occurrence = required, opts = []}];

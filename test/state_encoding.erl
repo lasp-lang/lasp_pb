@@ -2,7 +2,7 @@
 -include("lasp_pb.hrl").
 
 -ifdef(TEST).
--import(lasp_pb_codec, [encode/1, decode/1]).
+-import(lasp_pb_codec, [encode/1, decode/1, encode_decode/2, mult_encode_decode/2]).
 -include_lib("eunit/include/eunit.hrl").
 
 counter_val_test() ->
@@ -72,6 +72,27 @@ reqresp_map_test() ->
                   ktype = gcounter,
                   val = #mapfield{
                     v = {c, #valcounter{val=1234567890987654321}}
+                  }},
+        #mapentry{key = "another_map_key",
+                  ktype = orset,
+                  val = #mapfield{
+                    v = {s, #valset{elems = ["A", "BbB", "ZzZzZzZzZzZzZz..."]}}
+                  }},
+        #mapentry{key = "yet_another_map_key",
+                  ktype = lwwreg,
+                  val = #mapfield{
+                    v = {r, #valreg{val = "Some register value"}}
+                  }},
+        #mapentry{key = "is_this_even_possible",
+                  ktype = lwwreg,
+                  val = #mapfield{
+                    v = {m, #valmap{entries = [
+                                #mapentry{key = "yes_it_is",
+                                          ktype = lwwreg,
+                                          val = #mapfield{
+                                            v = {r, #valreg{val = "Some nested register value"}}
+                                          }}
+                    ]}}
                   }}
       ]}}},
     encode_decode(Op, reqresp).
@@ -80,12 +101,10 @@ reqresp_reg_test() ->
     Op = #reqresp{v = {reg, #valreg{val = "Lasp Lasp Lasp Lasp Lasp Lasp Lasp Lasp Lasp Lasp"}}},
     encode_decode(Op, reqresp).
 
-encode_decode(Op, RecordType) ->
-    % io:format("original operation: ~p~n", [Op]),
-    % io:format("internal encode(Op): ~p~n", [encode(Op)]),
-    Encoded = lasp_pb:encode_msg(encode(Op)),
-    % io:format("encoded form: ~p~n",[Encoded]),
-    Decoded = decode(lasp_pb:decode_msg(Encoded, RecordType)),
-    % io:format("decoded form: ~p~n",[Decoded]),
-    true = Op =:= Decoded.
+reqresp_success_test() ->
+    Ops = [
+      #reqresp{v = {success, true}},
+      #reqresp{v = {success, false}}
+    ],
+    mult_encode_decode(Ops, reqresp).
 -endif.

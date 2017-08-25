@@ -2,7 +2,11 @@
 
 -include ("lasp_pb.hrl").
 
+%% API
 -export([ encode/1, decode/1 ]).
+
+%% Testing API
+-export ([ encode_decode/2, mult_encode_decode/2 ]).
 
 %% Encoding
 encode(#reqresp{v = {Type, Record}}) ->
@@ -58,33 +62,15 @@ encode(#pair{a = A, b = B}) ->
 encode(#triple{a = A, b = B, c = C}) ->
     #triple{a = encode(A), b = encode(B), c = encode(C)};
 
+encode(true) -> 1;
+encode(false) -> 0;
+
 encode(X) when is_atom(X) ->
     atom_to_list(X);
 
 %% Catch all clause (valid for integers, lists, binaries, etc.)
 encode(X) ->
     X.
-
-%TODO NOTE *IMPORTANT* delete this
-% encode({A, B}) ->
-%     #entry{u = {ii, #pair{a = encode(A),
-%                           b = encode(B)}}};
-% encode({A, B, C}) ->
-%     #entry{u = {iii, #triple{a = encode(A),
-%                             b = encode(B),
-%                             c = encode(C)}}};
-%
-% encode(A) when is_integer(A) ->
-%     #entry{u = {int, A}};
-% encode(A) when is_atom(A) ->
-%     #entry{u = {atm, atom_to_list(A)}};
-% % else assume it's string
-% encode(A) ->
-%     #entry{u = {str, A}}.
-%
-% encode_atom(A) when is_atom(A) ->
-%     atom_to_list(A).
-%TODO NOTE END *IMPORTANT* delete this
 
 %% Decode operations.
 decode(#reqresp{v = {error, Error}}) ->
@@ -164,7 +150,10 @@ decode(#entry{u = {ii, #pair{a = A, b = B}}}) ->
 decode(#entry{u = {iii, #triple{a = A, b = B, c = C}}}) ->
     #entry{u = {iii, #triple{ a = decode(A),
                               b = decode(B),
-                              c = decode(C)}}}.
+                              c = decode(C)}}};
+
+decode(true) -> true;
+decode(false) -> false.
 
 decode_atom(Bin) when is_binary(Bin) ->
     binary_to_atom(Bin, utf8).
@@ -177,3 +166,22 @@ decode_string_list([], Res) ->
 decode_string_list([H|T], Res) ->
     H1 = binary_to_list(H),
     decode_string_list(T, [H1|Res]).
+
+%% -------------------------------------------------------------------
+%% Testing/utility functions
+%% -------------------------------------------------------------------
+
+encode_decode(Op, RecordType) ->
+    % io:format("original operation: ~p~n", [Op]),
+    % io:format("internal encode(Op): ~p~n", [encode(Op)]),
+    Encoded = lasp_pb:encode_msg(encode(Op)),
+    % io:format("encoded form: ~p~n",[Encoded]),
+    Decoded = decode(lasp_pb:decode_msg(Encoded, RecordType)),
+    % io:format("decoded form: ~p~n",[Decoded]),
+    true = Op =:= Decoded.
+
+mult_encode_decode([H|T], RecordType) ->
+    true = encode_decode(H, RecordType),
+    mult_encode_decode(T, RecordType);
+mult_encode_decode([], _) ->
+    true.

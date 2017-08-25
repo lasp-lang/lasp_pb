@@ -2,7 +2,7 @@
 -include("lasp_pb.hrl").
 
 -ifdef(TEST).
--import(lasp_pb_codec, [encode/1, decode/1]).
+-import(lasp_pb_codec, [encode/1, decode/1, encode_decode/2, mult_encode_decode/2]).
 -include_lib("eunit/include/eunit.hrl").
 
 entry_basic_test() ->
@@ -99,12 +99,6 @@ req_opupdate_inc_counter_test() ->
                     actor=node()}}},
     encode_decode(Op, req).
 
-mult_encode_decode([H|T], RecordType) ->
-    true = encode_decode(H, RecordType),
-    mult_encode_decode(T, RecordType);
-mult_encode_decode([], _) ->
-    true.
-
 build_entry_rec(Val) when is_atom(Val) ->
     #entry{u = {atm, Val}};
 build_entry_rec(Val) when is_integer(Val) ->
@@ -115,13 +109,4 @@ build_entry_rec(#pair{a = _, b = _} = Pair) ->
     #entry{u = {ii, Pair}};
 build_entry_rec(#triple{a = _, b = _, c = _} = Triple) ->
     #entry{u = {iii, Triple}}.
-
-encode_decode(Op, RecordType) ->
-    % io:format("original operation: ~p~n", [Op]),
-    % io:format("internal encode(Op): ~p~n", [encode(Op)]),
-    Encoded = lasp_pb:encode_msg(encode(Op)),
-    % io:format("encoded form: ~p~n",[Encoded]),
-    Decoded = decode(lasp_pb:decode_msg(Encoded, RecordType)),
-    % io:format("decoded form: ~p~n",[Decoded]),
-    true = Op =:= Decoded.
 -endif.

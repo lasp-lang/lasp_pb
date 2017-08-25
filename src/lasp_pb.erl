@@ -215,6 +215,11 @@ e_msg_reqresp(#reqresp{v = F1}, Bin, TrUserData) ->
 	    TrOF1 = id(OF1, TrUserData),
 	    e_mfield_reqresp_reg(TrOF1, <<Bin/binary, 42>>,
 				 TrUserData)
+	  end;
+      {success, OF1} ->
+	  begin
+	    TrOF1 = id(OF1, TrUserData),
+	    e_type_bool(TrOF1, <<Bin/binary, 48>>)
 	  end
     end.
 
@@ -451,6 +456,11 @@ e_type_int64(Value, Bin)
 e_type_int64(Value, Bin) ->
     <<N:64/unsigned-native>> = <<Value:64/signed-native>>,
     e_varint(N, Bin).
+
+e_type_bool(true, Bin) -> <<Bin/binary, 1>>;
+e_type_bool(false, Bin) -> <<Bin/binary, 0>>;
+e_type_bool(1, Bin) -> <<Bin/binary, 1>>;
+e_type_bool(0, Bin) -> <<Bin/binary, 0>>.
 
 e_type_string(S, Bin) ->
     Utf8 = unicode:characters_to_binary(S),
@@ -1357,6 +1367,9 @@ dfp_read_field_def_reqresp(<<34, Rest/binary>>, Z1, Z2,
 dfp_read_field_def_reqresp(<<42, Rest/binary>>, Z1, Z2,
 			   F1, TrUserData) ->
     d_field_reqresp_reg(Rest, Z1, Z2, F1, TrUserData);
+dfp_read_field_def_reqresp(<<48, Rest/binary>>, Z1, Z2,
+			   F1, TrUserData) ->
+    d_field_reqresp_success(Rest, Z1, Z2, F1, TrUserData);
 dfp_read_field_def_reqresp(<<>>, 0, 0, F1, _) ->
     #reqresp{v = F1};
 dfp_read_field_def_reqresp(Other, Z1, Z2, F1,
@@ -1378,6 +1391,8 @@ dg_read_field_def_reqresp(<<0:1, X:7, Rest/binary>>, N,
       26 -> d_field_reqresp_set(Rest, 0, 0, F1, TrUserData);
       34 -> d_field_reqresp_map(Rest, 0, 0, F1, TrUserData);
       42 -> d_field_reqresp_reg(Rest, 0, 0, F1, TrUserData);
+      48 ->
+	  d_field_reqresp_success(Rest, 0, 0, F1, TrUserData);
       _ ->
 	  case Key band 7 of
 	    0 -> skip_varint_reqresp(Rest, 0, 0, F1, TrUserData);
@@ -1497,6 +1512,18 @@ d_field_reqresp_reg(<<0:1, X:7, Rest/binary>>, N, Acc,
 				 _ -> {reg, NewFValue}
 			       end,
 			       TrUserData).
+
+
+d_field_reqresp_success(<<1:1, X:7, Rest/binary>>, N,
+			Acc, F1, TrUserData)
+    when N < 57 ->
+    d_field_reqresp_success(Rest, N + 7, X bsl N + Acc, F1,
+			    TrUserData);
+d_field_reqresp_success(<<0:1, X:7, Rest/binary>>, N,
+			Acc, _, TrUserData) ->
+    NewFValue = X bsl N + Acc =/= 0,
+    dfp_read_field_def_reqresp(Rest, 0, 0,
+			       {success, NewFValue}, TrUserData).
 
 
 skip_varint_reqresp(<<1:1, _:7, Rest/binary>>, Z1, Z2,
@@ -2583,6 +2610,7 @@ v_msg_reqresp(#reqresp{v = F1}, Path, TrUserData) ->
 	  v_msg_valmap(OF1, [map, v | Path], TrUserData);
       {reg, OF1} ->
 	  v_msg_valreg(OF1, [reg, v | Path], TrUserData);
+      {success, OF1} -> v_type_bool(OF1, [success, v | Path]);
       _ -> mk_type_error(invalid_oneof, F1, [v | Path])
     end,
     ok.
@@ -2666,6 +2694,14 @@ v_type_int64(N, Path) when is_integer(N) ->
 v_type_int64(X, Path) ->
     mk_type_error({bad_integer, int64, signed, 64}, X,
 		  Path).
+
+-dialyzer({nowarn_function,v_type_bool/2}).
+v_type_bool(false, _Path) -> ok;
+v_type_bool(true, _Path) -> ok;
+v_type_bool(0, _Path) -> ok;
+v_type_bool(1, _Path) -> ok;
+v_type_bool(X, Path) ->
+    mk_type_error(bad_boolean_value, X, Path).
 
 -dialyzer({nowarn_function,v_type_string/2}).
 v_type_string(S, Path) when is_list(S); is_binary(S) ->
@@ -2775,7 +2811,9 @@ get_msg_defs() ->
 			      opts = []},
 		       #field{name = reg, fnum = 5, rnum = 2,
 			      type = {msg, valreg}, occurrence = optional,
-			      opts = []}]}]},
+			      opts = []},
+		       #field{name = success, fnum = 6, rnum = 2, type = bool,
+			      occurrence = optional, opts = []}]}]},
      {{msg, valcounter},
       [#field{name = val, fnum = 1, rnum = 2, type = int64,
 	      occurrence = required, opts = []}]},
@@ -2906,7 +2944,9 @@ find_msg_def(reqresp) ->
 			    opts = []},
 		     #field{name = reg, fnum = 5, rnum = 2,
 			    type = {msg, valreg}, occurrence = optional,
-			    opts = []}]}];
+			    opts = []},
+		     #field{name = success, fnum = 6, rnum = 2, type = bool,
+			    occurrence = optional, opts = []}]}];
 find_msg_def(valcounter) ->
     [#field{name = val, fnum = 1, rnum = 2, type = int64,
 	    occurrence = required, opts = []}];

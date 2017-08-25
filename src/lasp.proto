@@ -58,6 +58,7 @@ message reqresp {
     valset set = 3;
     valmap map = 4;
     valreg reg = 5;
+    bool success = 6; // responding to update operations
   }
 }
 

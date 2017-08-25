@@ -1,6 +1,6 @@
 {application, lasp_pb,
  [{description, "A protobuffer library for Lasp"},
-  {vsn, "0.0.2"},
+  {vsn, "0.0.3"},
   {registered, []},
   {applications,
    [kernel,

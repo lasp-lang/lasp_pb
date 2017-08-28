@@ -5,108 +5,62 @@
 -import(lasp_pb_codec, [encode/1, decode/1, encode_decode/2, mult_encode_decode/2]).
 -include_lib("eunit/include/eunit.hrl").
 
+wa_test() ->
+    Op = {add_all, ["A", "b", "C"]},
+    ?assertEqual(Op, encode_decode(Op,entry)).
+
+
+simple_op_test() ->
+    Op = {add, "A"},
+    ?assertEqual(Op, encode_decode(Op,entry)).
+
 entry_basic_test() ->
     Ops = [
-        #entry{u = {int, 365}},
-        #entry{u = {str, "something"}},
-        #entry{u = {atm, something}}
+        increment,
+        {add, "A"},
+        {add_all, ["A", "b", "C"]},
+        {set, 1010, "value"},
+        {apply, "key", gcounter, increment}
     ],
-    mult_encode_decode(Ops,entry).
+    ?assertEqual(Ops, mult_encode_decode(Ops, entry)).
 
 pair_basic_ops_test() ->
-    Ops = [
-        #pair{a = build_entry_rec(fst), b = build_entry_rec(increment)},
-        #pair{a = build_entry_rec(snd), b = build_entry_rec(365)}
-    ],
-    mult_encode_decode(Ops,pair).
+    Ops = [{fst, increment}, {snd, 365}],
+    ?assertEqual(Ops, mult_encode_decode(Ops, entry)).
 
 pair_nested_ops_test() ->
-    Ops = [
-        #pair{a = build_entry_rec(snd),
-              b = build_entry_rec(#pair{a = build_entry_rec(fst),
-                                        b = build_entry_rec(increment)})},
-        #pair{a = build_entry_rec(snd),
-              b = build_entry_rec(#pair{a = build_entry_rec(fst),
-                                        b = build_entry_rec(#pair{a = build_entry_rec(add),
-                                                                  b=build_entry_rec(17)})})}
-    ],
-    mult_encode_decode(Ops,pair).
+    Ops = [{snd, {fst, increment}}, {snd, {fst, {add, "17"}}}],
+    ?assertEqual(Ops, mult_encode_decode(Ops, entry)).
 
 triple_basic_op_test() ->
-    Op = #triple{ a = build_entry_rec(set),
-                  b = build_entry_rec(1010),
-                  c = build_entry_rec("value")},
-    encode_decode(Op, triple).
+    Op = {set, "key", "value"},
+    ?assertEqual(Op, encode_decode(Op, entry)).
+
+quad_basic_op_test() ->
+    Op = {apply, "key", gcounter, increment},
+    ?assertEqual(Op, encode_decode(Op, entry)).
 
 triple_nested_ops_test() ->
     Ops = [
-        #triple{a = build_entry_rec(apply),
-                b = build_entry_rec("key"),
-                c = build_entry_rec(#triple{a = build_entry_rec(set),
-                                            b = build_entry_rec(1010),
-                                            c = build_entry_rec("value")})},
-        #triple{a = build_entry_rec(apply),
-                b = build_entry_rec("key"),
-                c = build_entry_rec(#triple{a = build_entry_rec(set),
-                                            b = build_entry_rec(add),
-                                            c = build_entry_rec(#triple{a = build_entry_rec(a),
-                                                                        b = build_entry_rec(b),
-                                                                        c = build_entry_rec(c)})})}
+        {apply, "key", {set, "nested_key", "Value"}},
+        {apply, "key2", {add, ["a", "B", "c"]}}
     ],
-    mult_encode_decode(Ops,triple).
+    ?assertEqual(Ops, mult_encode_decode(Ops, entry)).
 
 map_ops_test() ->
     Ops = [
-        build_entry_rec(#triple{a = build_entry_rec(apply),
-                                b = build_entry_rec("hey"),
-                                c = build_entry_rec(2)}),
-        build_entry_rec(#triple{a = build_entry_rec(apply),
-                                b = build_entry_rec("hi"),
-                                c = build_entry_rec("random_string")}),
-        build_entry_rec(#triple{a = build_entry_rec(apply),
-                                b = build_entry_rec("hello"),
-                                c = build_entry_rec(can_it_handle_atoms)}),
-        build_entry_rec(#triple{a = build_entry_rec(apply),
-                                b = build_entry_rec("top_level"),
-                                c = build_entry_rec(#triple{a = build_entry_rec(apply),
-                                                            b = build_entry_rec("nested"),
-                                                            c = build_entry_rec(#pair{a = build_entry_rec(add),
-                                                                                      b = build_entry_rec(3)})})})
+        {apply, "hey", gcounter, increment},
+        {apply, "hi", lwwregister, {set, 12345, "value"}},
+        {apply, "hello", awset, {add_all, ["a", "b", "c", "d"]}},
+        {apply, "top_level", gmap, {apply, "nested", awset, {add, 3}}}
     ],
-    mult_encode_decode(Ops,entry).
-
-opget_test() ->
-    Op = #opget{key = "my_lasp_kv_key", type = gcounter},
-    encode_decode(Op, opget).
-
-opupdate_test() ->
-    Op = #opupdate{
-            k=#opget{key = "my_lasp_kv_key", type = gcounter},
-            e=[build_entry_rec(increment)],
-            actor=node()
-    },
-    encode_decode(Op, opupdate).
+    ?assertEqual(Ops, mult_encode_decode(Ops, entry)).
 
 req_opget_test() ->
-    Op = #req{u = {get, #opget{key = "my_lasp_kv_key", type = gcounter}}},
-    encode_decode(Op, req).
+    Op = {req, {get, {"key", gcounter}}},
+    ?assertEqual(Op, encode_decode(Op,req)).
 
-req_opupdate_inc_counter_test() ->
-    Op = #req{u = {put,
-                #opupdate{
-                    k=#opget{key = "my_lasp_kv_key", type = gcounter},
-                    e=[build_entry_rec(increment)],
-                    actor=node()}}},
-    encode_decode(Op, req).
-
-build_entry_rec(Val) when is_atom(Val) ->
-    #entry{u = {atm, Val}};
-build_entry_rec(Val) when is_integer(Val) ->
-    #entry{u = {int, Val}};
-build_entry_rec(Val) when is_list(Val) ->
-    #entry{u = {str, Val}};
-build_entry_rec(#pair{a = _, b = _} = Pair) ->
-    #entry{u = {ii, Pair}};
-build_entry_rec(#triple{a = _, b = _, c = _} = Triple) ->
-    #entry{u = {iii, Triple}}.
+req_opupdate_test() ->
+    Op = {req, {put, {{"key", gcounter}, increment, node()}}},
+    ?assertEqual(Op, encode_decode(Op,req)).
 -endif.

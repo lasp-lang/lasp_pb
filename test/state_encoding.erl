@@ -5,106 +5,71 @@
 -import(lasp_pb_codec, [encode/1, decode/1, encode_decode/2, mult_encode_decode/2]).
 -include_lib("eunit/include/eunit.hrl").
 
-counter_val_test() ->
-    Op = #valcounter{val=1234567890987654321},
-    encode_decode(Op, valcounter).
+counter_positive_val_test() ->
+    Val = {response, gcounter, 1234567890987654321},
+    {A, _, B} = Val,
+    ?assertEqual({A, B}, encode_decode(Val, reqresp)).
 
-set_val_test() ->
-    Op = #valset{elems=["A", "bbb", "CCCcCCC"]},
-    encode_decode(Op, valset).
+counter_negative_val_test() ->
+    Val = {response, pncounter, -1234567890987654321},
+    {A, _, B} = Val,
+    ?assertEqual({A, B}, encode_decode(Val, reqresp)).
 
-reg_val_test() ->
-    Op = #valreg{val = "Lasp rules"},
-    encode_decode(Op, valreg).
+set_atom_val_test() ->
+    Elems = [one, two, three],
+    Val = {response, orset, Elems},
+    {A, _, B} = Val,
+    Expected = {A, lists:map(fun(E) -> atom_to_list(E) end, B)},
+    ?assertEqual(Expected, encode_decode(Val, reqresp)).
 
-map_val_test() ->
-    Op =
-        #valmap{
-          entries = [
-            #mapentry{key = "map_key",
-                      ktype = gcounter,
-                      val = #mapfield{
-                        v = {c, #valcounter{val=1234567890987654321}}
-                      }}
-          ]},
-    encode_decode(Op, valmap).
+set_string_val_test() ->
+    Val = {response, orset, ["A", "bbb", "CCCcCCC"]},
+    {A, _, B} = Val,
+    ?assertEqual({A, B}, encode_decode(Val, reqresp)).
 
-nested_map_val_test() ->
-    Op = #valmap{
-      entries = [
-        #mapentry{key = "obj_key1", ktype = gcounter, val = #mapfield{
-          v = {c, #valcounter{val = 1234567890987654321}}
-        }},
-        #mapentry{key = "obj_key2", ktype = orset, val = #mapfield{
-          v = {s, #valset{elems = ["A", "B", "C"]}}
-        }},
-        #mapentry{key = "obj_key3", ktype = gmap, val = #mapfield{
-          v = {m, #valmap{
-                entries = [
-                    #mapentry{key = "nested_obj_key1", ktype = gcounter,
-                    val = #mapfield{v = {c, #valcounter{val = 123}}}},
-                    #mapentry{key = "nested_obj_key2", ktype = orset,
-                    val = #mapfield{v = {s, #valset{elems = ["ab", "cd"]}}}},
-                    #mapentry{key = "nested_obj_key1", ktype = lwwregister,
-                    val = #mapfield{v = {r, #valreg{val = "123"}}}}
+reg_atom_val_test() ->
+    Val = {response, lwwregister, some_value},
+    {A, _, B} = Val,
+    ?assertEqual({A, atom_to_list(B)}, encode_decode(Val, reqresp)).
+
+reg_string_val_test() ->
+    Val = {response, lwwregister, "some_value"},
+    {A, _, B} = Val,
+    ?assertEqual({A, B}, encode_decode(Val, reqresp)).
+
+map_basic_val_test() ->
+    Val = {response, mvmap, [
+        {"ctr_map_key", gcounter, 1234567890987654321},
+        {"ctr_map_key", pncounter, -1234567890987654321},
+        {"set_map_key", awset, ["lasp", "is", "cool"]},
+        {"reg_map_key", lwwregister, "string value"}
+    ]},
+    {A, _, B} = Val,
+    ?assertEqual({A, B}, encode_decode(Val, reqresp)).
+
+map_nested_val_test() ->
+    Val = {response, gmap, [
+        {"normal_key", lwwregister, "string value"},
+        {"another_normal_key", awset, ["lasp", "is", "cool"]},
+        {"map_key", gmap, [
+                        {"nested_normal_key", lwwregister, "string value"},
+                        {"another_nested_normal_key", awset, ["lasp", "is", "cool"]},
+                        {"we need to go deeper", awmap, [
+                                                      {"ctr_map_key", pncounter, -1234567890987654321}
+                                                      ]}
                     ]}
-                  }
-        }}
-      ]},
-    encode_decode(Op, valmap).
+    ]},
+    {A, _, B} = Val,
+    ?assertEqual({A, B}, encode_decode(Val, reqresp)).
 
 reqresp_error_test() ->
-    Op = #reqresp{v = {error, "Something went wrong!"}},
-    encode_decode(Op, reqresp).
-
-reqresp_counter_test() ->
-    Op = #reqresp{v = {ctr, #valcounter{val = 42}}},
-    encode_decode(Op, reqresp).
-
-reqresp_set_test() ->
-    Op = #reqresp{v = {set, #valset{elems = ["aAa", "BbB", "CCCcccCCC"]}}},
-    encode_decode(Op, reqresp).
-
-reqresp_map_test() ->
-    Op = #reqresp{v = {map, #valmap{
-      entries = [
-        #mapentry{key = "map_key",
-                  ktype = gcounter,
-                  val = #mapfield{
-                    v = {c, #valcounter{val=1234567890987654321}}
-                  }},
-        #mapentry{key = "another_map_key",
-                  ktype = orset,
-                  val = #mapfield{
-                    v = {s, #valset{elems = ["A", "BbB", "ZzZzZzZzZzZzZz..."]}}
-                  }},
-        #mapentry{key = "yet_another_map_key",
-                  ktype = lwwreg,
-                  val = #mapfield{
-                    v = {r, #valreg{val = "Some register value"}}
-                  }},
-        #mapentry{key = "is_this_even_possible",
-                  ktype = lwwreg,
-                  val = #mapfield{
-                    v = {m, #valmap{entries = [
-                                #mapentry{key = "yes_it_is",
-                                          ktype = lwwreg,
-                                          val = #mapfield{
-                                            v = {r, #valreg{val = "Some nested register value"}}
-                                          }}
-                    ]}}
-                  }}
-      ]}}},
-    encode_decode(Op, reqresp).
-
-reqresp_reg_test() ->
-    Op = #reqresp{v = {reg, #valreg{val = "Lasp Lasp Lasp Lasp Lasp Lasp Lasp Lasp Lasp Lasp"}}},
-    encode_decode(Op, reqresp).
+    Val = {response, error, "something went horribly wrong!"},
+    ?assertEqual(Val, encode_decode(Val, reqresp)).
 
 reqresp_success_test() ->
     Ops = [
-      #reqresp{v = {success, true}},
-      #reqresp{v = {success, false}}
+      {response, success, true},
+      {response, success, false}
     ],
-    mult_encode_decode(Ops, reqresp).
+    ?assertEqual(Ops, mult_encode_decode(Ops, reqresp)).
 -endif.

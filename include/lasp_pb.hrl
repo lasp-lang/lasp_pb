@@ -26,7 +26,7 @@
 -define('OPUPDATE_PB_H', true).
 -record(opupdate,
         {k,                             % = 1, {msg,opget}
-         e = [],                        % = 2, [{msg,entry}]
+         e,                             % = 2, {msg,entry}
          actor                          % = 3, string
         }).
 -endif.
@@ -35,6 +35,13 @@
 -define('ENTRY_PB_H', true).
 -record(entry,
         {u                              % oneof
+        }).
+-endif.
+
+-ifndef('LIST_PB_H').
+-define('LIST_PB_H', true).
+-record(list,
+        {elems = []                     % = 1, [{msg,entry}]
         }).
 -endif.
 
@@ -52,6 +59,16 @@
         {a,                             % = 1, {msg,entry}
          b,                             % = 2, {msg,entry}
          c                              % = 3, {msg,entry}
+        }).
+-endif.
+
+-ifndef('QUAD_PB_H').
+-define('QUAD_PB_H', true).
+-record(quad,
+        {a,                             % = 1, {msg,entry}
+         b,                             % = 2, {msg,entry}
+         c,                             % = 3, {msg,entry}
+         d                              % = 4, {msg,entry}
         }).
 -endif.
 

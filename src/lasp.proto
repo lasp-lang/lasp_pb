@@ -24,7 +24,7 @@ message opget {
 
 message opupdate {
   required opget k = 1;
-  repeated entry e = 2;
+  required entry e = 2;
   required string actor = 3;
 }
 
@@ -33,20 +33,38 @@ message entry {
     int64  int = 1;
     string str = 2;
     string atm = 3;
-    pair    ii = 4;
-    triple  iii = 5;
+    list   list = 4;
+    pair    ii = 5;
+    triple  iii = 6;
+    quad    iv = 7;
   }
 }
 
+// for encoding multiple operations in a single entry
+// useful for adding multiple values to sets and maps
+message list {
+  repeated entry elems = 1;
+}
+
+// for set operations (e.g. {add, Value})
 message pair {
   required entry a = 1;
   required entry b = 2;
 }
 
+// for set operations (e.g. {set, TimeStamp, Value})
 message triple {
   required entry a = 1;
   required entry b = 2;
   required entry c = 3;
+}
+
+// for map operations (e.g. {apply, Key, KeyType, Op})
+message quad {
+  required entry a = 1;
+  required entry b = 2;
+  required entry c = 3;
+  required entry d = 4;
 }
 
 // CRDT state messages
@@ -86,9 +104,9 @@ message mapentry {
 
 message mapfield {
   oneof v {
-    valcounter c = 1;
-    valset s = 2;
-    valmap m = 3;
-    valreg r = 4;
+    valcounter ctr = 1;
+    valset set = 2;
+    valmap map = 3;
+    valreg reg = 4;
   }
 }

@@ -43,8 +43,10 @@ encode_msg(Msg, Opts) ->
       #opget{} -> e_msg_opget(Msg, TrUserData);
       #opupdate{} -> e_msg_opupdate(Msg, TrUserData);
       #entry{} -> e_msg_entry(Msg, TrUserData);
+      #list{} -> e_msg_list(Msg, TrUserData);
       #pair{} -> e_msg_pair(Msg, TrUserData);
       #triple{} -> e_msg_triple(Msg, TrUserData);
+      #quad{} -> e_msg_quad(Msg, TrUserData);
       #reqresp{} -> e_msg_reqresp(Msg, TrUserData);
       #valcounter{} -> e_msg_valcounter(Msg, TrUserData);
       #valset{} -> e_msg_valset(Msg, TrUserData);
@@ -103,9 +105,7 @@ e_msg_opupdate(#opupdate{k = F1, e = F2, actor = F3},
 	 end,
     B2 = begin
 	   TrF2 = id(F2, TrUserData),
-	   if TrF2 == [] -> B1;
-	      true -> e_field_opupdate_e(TrF2, B1, TrUserData)
-	   end
+	   e_mfield_opupdate_e(TrF2, <<B1/binary, 18>>, TrUserData)
 	 end,
     begin
       TrF3 = id(F3, TrUserData),
@@ -134,17 +134,40 @@ e_msg_entry(#entry{u = F1}, Bin, TrUserData) ->
 	    TrOF1 = id(OF1, TrUserData),
 	    e_type_string(TrOF1, <<Bin/binary, 26>>)
 	  end;
+      {list, OF1} ->
+	  begin
+	    TrOF1 = id(OF1, TrUserData),
+	    e_mfield_entry_list(TrOF1, <<Bin/binary, 34>>,
+				TrUserData)
+	  end;
       {ii, OF1} ->
 	  begin
 	    TrOF1 = id(OF1, TrUserData),
-	    e_mfield_entry_ii(TrOF1, <<Bin/binary, 34>>, TrUserData)
+	    e_mfield_entry_ii(TrOF1, <<Bin/binary, 42>>, TrUserData)
 	  end;
       {iii, OF1} ->
 	  begin
 	    TrOF1 = id(OF1, TrUserData),
-	    e_mfield_entry_iii(TrOF1, <<Bin/binary, 42>>,
+	    e_mfield_entry_iii(TrOF1, <<Bin/binary, 50>>,
 			       TrUserData)
+	  end;
+      {iv, OF1} ->
+	  begin
+	    TrOF1 = id(OF1, TrUserData),
+	    e_mfield_entry_iv(TrOF1, <<Bin/binary, 58>>, TrUserData)
 	  end
+    end.
+
+e_msg_list(Msg, TrUserData) ->
+    e_msg_list(Msg, <<>>, TrUserData).
+
+
+e_msg_list(#list{elems = F1}, Bin, TrUserData) ->
+    begin
+      TrF1 = id(F1, TrUserData),
+      if TrF1 == [] -> Bin;
+	 true -> e_field_list_elems(TrF1, Bin, TrUserData)
+      end
     end.
 
 e_msg_pair(Msg, TrUserData) ->
@@ -178,6 +201,29 @@ e_msg_triple(#triple{a = F1, b = F2, c = F3}, Bin,
     begin
       TrF3 = id(F3, TrUserData),
       e_mfield_triple_c(TrF3, <<B2/binary, 26>>, TrUserData)
+    end.
+
+e_msg_quad(Msg, TrUserData) ->
+    e_msg_quad(Msg, <<>>, TrUserData).
+
+
+e_msg_quad(#quad{a = F1, b = F2, c = F3, d = F4}, Bin,
+	   TrUserData) ->
+    B1 = begin
+	   TrF1 = id(F1, TrUserData),
+	   e_mfield_quad_a(TrF1, <<Bin/binary, 10>>, TrUserData)
+	 end,
+    B2 = begin
+	   TrF2 = id(F2, TrUserData),
+	   e_mfield_quad_b(TrF2, <<B1/binary, 18>>, TrUserData)
+	 end,
+    B3 = begin
+	   TrF3 = id(F3, TrUserData),
+	   e_mfield_quad_c(TrF3, <<B2/binary, 26>>, TrUserData)
+	 end,
+    begin
+      TrF4 = id(F4, TrUserData),
+      e_mfield_quad_d(TrF4, <<B3/binary, 34>>, TrUserData)
     end.
 
 e_msg_reqresp(Msg, TrUserData) ->
@@ -296,29 +342,29 @@ e_msg_mapfield(Msg, TrUserData) ->
 e_msg_mapfield(#mapfield{v = F1}, Bin, TrUserData) ->
     case F1 of
       undefined -> Bin;
-      {c, OF1} ->
+      {ctr, OF1} ->
 	  begin
 	    TrOF1 = id(OF1, TrUserData),
-	    e_mfield_mapfield_c(TrOF1, <<Bin/binary, 10>>,
-				TrUserData)
+	    e_mfield_mapfield_ctr(TrOF1, <<Bin/binary, 10>>,
+				  TrUserData)
 	  end;
-      {s, OF1} ->
+      {set, OF1} ->
 	  begin
 	    TrOF1 = id(OF1, TrUserData),
-	    e_mfield_mapfield_s(TrOF1, <<Bin/binary, 18>>,
-				TrUserData)
+	    e_mfield_mapfield_set(TrOF1, <<Bin/binary, 18>>,
+				  TrUserData)
 	  end;
-      {m, OF1} ->
+      {map, OF1} ->
 	  begin
 	    TrOF1 = id(OF1, TrUserData),
-	    e_mfield_mapfield_m(TrOF1, <<Bin/binary, 26>>,
-				TrUserData)
+	    e_mfield_mapfield_map(TrOF1, <<Bin/binary, 26>>,
+				  TrUserData)
 	  end;
-      {r, OF1} ->
+      {reg, OF1} ->
 	  begin
 	    TrOF1 = id(OF1, TrUserData),
-	    e_mfield_mapfield_r(TrOF1, <<Bin/binary, 34>>,
-				TrUserData)
+	    e_mfield_mapfield_reg(TrOF1, <<Bin/binary, 34>>,
+				  TrUserData)
 	  end
     end.
 
@@ -342,12 +388,10 @@ e_mfield_opupdate_e(Msg, Bin, TrUserData) ->
     Bin2 = e_varint(byte_size(SubBin), Bin),
     <<Bin2/binary, SubBin/binary>>.
 
-e_field_opupdate_e([Elem | Rest], Bin, TrUserData) ->
-    Bin2 = <<Bin/binary, 18>>,
-    Bin3 = e_mfield_opupdate_e(id(Elem, TrUserData), Bin2,
-			       TrUserData),
-    e_field_opupdate_e(Rest, Bin3, TrUserData);
-e_field_opupdate_e([], Bin, _TrUserData) -> Bin.
+e_mfield_entry_list(Msg, Bin, TrUserData) ->
+    SubBin = e_msg_list(Msg, <<>>, TrUserData),
+    Bin2 = e_varint(byte_size(SubBin), Bin),
+    <<Bin2/binary, SubBin/binary>>.
 
 e_mfield_entry_ii(Msg, Bin, TrUserData) ->
     SubBin = e_msg_pair(Msg, <<>>, TrUserData),
@@ -358,6 +402,23 @@ e_mfield_entry_iii(Msg, Bin, TrUserData) ->
     SubBin = e_msg_triple(Msg, <<>>, TrUserData),
     Bin2 = e_varint(byte_size(SubBin), Bin),
     <<Bin2/binary, SubBin/binary>>.
+
+e_mfield_entry_iv(Msg, Bin, TrUserData) ->
+    SubBin = e_msg_quad(Msg, <<>>, TrUserData),
+    Bin2 = e_varint(byte_size(SubBin), Bin),
+    <<Bin2/binary, SubBin/binary>>.
+
+e_mfield_list_elems(Msg, Bin, TrUserData) ->
+    SubBin = e_msg_entry(Msg, <<>>, TrUserData),
+    Bin2 = e_varint(byte_size(SubBin), Bin),
+    <<Bin2/binary, SubBin/binary>>.
+
+e_field_list_elems([Elem | Rest], Bin, TrUserData) ->
+    Bin2 = <<Bin/binary, 10>>,
+    Bin3 = e_mfield_list_elems(id(Elem, TrUserData), Bin2,
+			       TrUserData),
+    e_field_list_elems(Rest, Bin3, TrUserData);
+e_field_list_elems([], Bin, _TrUserData) -> Bin.
 
 e_mfield_pair_a(Msg, Bin, TrUserData) ->
     SubBin = e_msg_entry(Msg, <<>>, TrUserData),
@@ -380,6 +441,26 @@ e_mfield_triple_b(Msg, Bin, TrUserData) ->
     <<Bin2/binary, SubBin/binary>>.
 
 e_mfield_triple_c(Msg, Bin, TrUserData) ->
+    SubBin = e_msg_entry(Msg, <<>>, TrUserData),
+    Bin2 = e_varint(byte_size(SubBin), Bin),
+    <<Bin2/binary, SubBin/binary>>.
+
+e_mfield_quad_a(Msg, Bin, TrUserData) ->
+    SubBin = e_msg_entry(Msg, <<>>, TrUserData),
+    Bin2 = e_varint(byte_size(SubBin), Bin),
+    <<Bin2/binary, SubBin/binary>>.
+
+e_mfield_quad_b(Msg, Bin, TrUserData) ->
+    SubBin = e_msg_entry(Msg, <<>>, TrUserData),
+    Bin2 = e_varint(byte_size(SubBin), Bin),
+    <<Bin2/binary, SubBin/binary>>.
+
+e_mfield_quad_c(Msg, Bin, TrUserData) ->
+    SubBin = e_msg_entry(Msg, <<>>, TrUserData),
+    Bin2 = e_varint(byte_size(SubBin), Bin),
+    <<Bin2/binary, SubBin/binary>>.
+
+e_mfield_quad_d(Msg, Bin, TrUserData) ->
     SubBin = e_msg_entry(Msg, <<>>, TrUserData),
     Bin2 = e_varint(byte_size(SubBin), Bin),
     <<Bin2/binary, SubBin/binary>>.
@@ -428,22 +509,22 @@ e_mfield_mapentry_val(Msg, Bin, TrUserData) ->
     Bin2 = e_varint(byte_size(SubBin), Bin),
     <<Bin2/binary, SubBin/binary>>.
 
-e_mfield_mapfield_c(Msg, Bin, TrUserData) ->
+e_mfield_mapfield_ctr(Msg, Bin, TrUserData) ->
     SubBin = e_msg_valcounter(Msg, <<>>, TrUserData),
     Bin2 = e_varint(byte_size(SubBin), Bin),
     <<Bin2/binary, SubBin/binary>>.
 
-e_mfield_mapfield_s(Msg, Bin, TrUserData) ->
+e_mfield_mapfield_set(Msg, Bin, TrUserData) ->
     SubBin = e_msg_valset(Msg, <<>>, TrUserData),
     Bin2 = e_varint(byte_size(SubBin), Bin),
     <<Bin2/binary, SubBin/binary>>.
 
-e_mfield_mapfield_m(Msg, Bin, TrUserData) ->
+e_mfield_mapfield_map(Msg, Bin, TrUserData) ->
     SubBin = e_msg_valmap(Msg, <<>>, TrUserData),
     Bin2 = e_varint(byte_size(SubBin), Bin),
     <<Bin2/binary, SubBin/binary>>.
 
-e_mfield_mapfield_r(Msg, Bin, TrUserData) ->
+e_mfield_mapfield_reg(Msg, Bin, TrUserData) ->
     SubBin = e_msg_valreg(Msg, <<>>, TrUserData),
     Bin2 = e_varint(byte_size(SubBin), Bin),
     <<Bin2/binary, SubBin/binary>>.
@@ -503,8 +584,10 @@ decode_msg(Bin, MsgName, Opts) when is_binary(Bin) ->
       opget -> d_msg_opget(Bin, TrUserData);
       opupdate -> d_msg_opupdate(Bin, TrUserData);
       entry -> d_msg_entry(Bin, TrUserData);
+      list -> d_msg_list(Bin, TrUserData);
       pair -> d_msg_pair(Bin, TrUserData);
       triple -> d_msg_triple(Bin, TrUserData);
+      quad -> d_msg_quad(Bin, TrUserData);
       reqresp -> d_msg_reqresp(Bin, TrUserData);
       valcounter -> d_msg_valcounter(Bin, TrUserData);
       valset -> d_msg_valset(Bin, TrUserData);
@@ -750,7 +833,8 @@ skip_64_opget(<<_:64, Rest/binary>>, Z1, Z2, F1, F2,
 
 d_msg_opupdate(Bin, TrUserData) ->
     dfp_read_field_def_opupdate(Bin, 0, 0,
-				id(undefined, TrUserData), id([], TrUserData),
+				id(undefined, TrUserData),
+				id(undefined, TrUserData),
 				id(undefined, TrUserData), TrUserData).
 
 dfp_read_field_def_opupdate(<<10, Rest/binary>>, Z1, Z2,
@@ -766,9 +850,8 @@ dfp_read_field_def_opupdate(<<26, Rest/binary>>, Z1, Z2,
     d_field_opupdate_actor(Rest, Z1, Z2, F1, F2, F3,
 			   TrUserData);
 dfp_read_field_def_opupdate(<<>>, 0, 0, F1, F2, F3,
-			    TrUserData) ->
-    #opupdate{k = F1, e = lists_reverse(F2, TrUserData),
-	      actor = F3};
+			    _) ->
+    #opupdate{k = F1, e = F2, actor = F3};
 dfp_read_field_def_opupdate(Other, Z1, Z2, F1, F2, F3,
 			    TrUserData) ->
     dg_read_field_def_opupdate(Other, Z1, Z2, F1, F2, F3,
@@ -807,10 +890,8 @@ dg_read_field_def_opupdate(<<0:1, X:7, Rest/binary>>, N,
 		skip_32_opupdate(Rest, 0, 0, F1, F2, F3, TrUserData)
 	  end
     end;
-dg_read_field_def_opupdate(<<>>, 0, 0, F1, F2, F3,
-			   TrUserData) ->
-    #opupdate{k = F1, e = lists_reverse(F2, TrUserData),
-	      actor = F3}.
+dg_read_field_def_opupdate(<<>>, 0, 0, F1, F2, F3, _) ->
+    #opupdate{k = F1, e = F2, actor = F3}.
 
 d_field_opupdate_k(<<1:1, X:7, Rest/binary>>, N, Acc,
 		   F1, F2, F3, TrUserData)
@@ -842,8 +923,12 @@ d_field_opupdate_e(<<0:1, X:7, Rest/binary>>, N, Acc,
     <<Bs:Len/binary, Rest2/binary>> = Rest,
     NewFValue = id(d_msg_entry(Bs, TrUserData), TrUserData),
     dfp_read_field_def_opupdate(Rest2, 0, 0, F1,
-				cons(NewFValue, F2, TrUserData), F3,
-				TrUserData).
+				if F2 == undefined -> NewFValue;
+				   true ->
+				       merge_msg_entry(F2, NewFValue,
+						       TrUserData)
+				end,
+				F3, TrUserData).
 
 
 d_field_opupdate_actor(<<1:1, X:7, Rest/binary>>, N,
@@ -919,10 +1004,16 @@ dfp_read_field_def_entry(<<26, Rest/binary>>, Z1, Z2,
     d_field_entry_atm(Rest, Z1, Z2, F1, TrUserData);
 dfp_read_field_def_entry(<<34, Rest/binary>>, Z1, Z2,
 			 F1, TrUserData) ->
-    d_field_entry_ii(Rest, Z1, Z2, F1, TrUserData);
+    d_field_entry_list(Rest, Z1, Z2, F1, TrUserData);
 dfp_read_field_def_entry(<<42, Rest/binary>>, Z1, Z2,
 			 F1, TrUserData) ->
+    d_field_entry_ii(Rest, Z1, Z2, F1, TrUserData);
+dfp_read_field_def_entry(<<50, Rest/binary>>, Z1, Z2,
+			 F1, TrUserData) ->
     d_field_entry_iii(Rest, Z1, Z2, F1, TrUserData);
+dfp_read_field_def_entry(<<58, Rest/binary>>, Z1, Z2,
+			 F1, TrUserData) ->
+    d_field_entry_iv(Rest, Z1, Z2, F1, TrUserData);
 dfp_read_field_def_entry(<<>>, 0, 0, F1, _) ->
     #entry{u = F1};
 dfp_read_field_def_entry(Other, Z1, Z2, F1,
@@ -941,8 +1032,10 @@ dg_read_field_def_entry(<<0:1, X:7, Rest/binary>>, N,
       8 -> d_field_entry_int(Rest, 0, 0, F1, TrUserData);
       18 -> d_field_entry_str(Rest, 0, 0, F1, TrUserData);
       26 -> d_field_entry_atm(Rest, 0, 0, F1, TrUserData);
-      34 -> d_field_entry_ii(Rest, 0, 0, F1, TrUserData);
-      42 -> d_field_entry_iii(Rest, 0, 0, F1, TrUserData);
+      34 -> d_field_entry_list(Rest, 0, 0, F1, TrUserData);
+      42 -> d_field_entry_ii(Rest, 0, 0, F1, TrUserData);
+      50 -> d_field_entry_iii(Rest, 0, 0, F1, TrUserData);
+      58 -> d_field_entry_iv(Rest, 0, 0, F1, TrUserData);
       _ ->
 	  case Key band 7 of
 	    0 -> skip_varint_entry(Rest, 0, 0, F1, TrUserData);
@@ -998,6 +1091,28 @@ d_field_entry_atm(<<0:1, X:7, Rest/binary>>, N, Acc, _,
 			     TrUserData).
 
 
+d_field_entry_list(<<1:1, X:7, Rest/binary>>, N, Acc,
+		   F1, TrUserData)
+    when N < 57 ->
+    d_field_entry_list(Rest, N + 7, X bsl N + Acc, F1,
+		       TrUserData);
+d_field_entry_list(<<0:1, X:7, Rest/binary>>, N, Acc,
+		   F1, TrUserData) ->
+    Len = X bsl N + Acc,
+    <<Bs:Len/binary, Rest2/binary>> = Rest,
+    NewFValue = id(d_msg_list(Bs, TrUserData), TrUserData),
+    dfp_read_field_def_entry(Rest2, 0, 0,
+			     case F1 of
+			       undefined -> {list, NewFValue};
+			       {list, MVF1} ->
+				   {list,
+				    merge_msg_list(MVF1, NewFValue,
+						   TrUserData)};
+			       _ -> {list, NewFValue}
+			     end,
+			     TrUserData).
+
+
 d_field_entry_ii(<<1:1, X:7, Rest/binary>>, N, Acc, F1,
 		 TrUserData)
     when N < 57 ->
@@ -1043,6 +1158,28 @@ d_field_entry_iii(<<0:1, X:7, Rest/binary>>, N, Acc, F1,
 			     TrUserData).
 
 
+d_field_entry_iv(<<1:1, X:7, Rest/binary>>, N, Acc, F1,
+		 TrUserData)
+    when N < 57 ->
+    d_field_entry_iv(Rest, N + 7, X bsl N + Acc, F1,
+		     TrUserData);
+d_field_entry_iv(<<0:1, X:7, Rest/binary>>, N, Acc, F1,
+		 TrUserData) ->
+    Len = X bsl N + Acc,
+    <<Bs:Len/binary, Rest2/binary>> = Rest,
+    NewFValue = id(d_msg_quad(Bs, TrUserData), TrUserData),
+    dfp_read_field_def_entry(Rest2, 0, 0,
+			     case F1 of
+			       undefined -> {iv, NewFValue};
+			       {iv, MVF1} ->
+				   {iv,
+				    merge_msg_quad(MVF1, NewFValue,
+						   TrUserData)};
+			       _ -> {iv, NewFValue}
+			     end,
+			     TrUserData).
+
+
 skip_varint_entry(<<1:1, _:7, Rest/binary>>, Z1, Z2, F1,
 		  TrUserData) ->
     skip_varint_entry(Rest, Z1, Z2, F1, TrUserData);
@@ -1076,6 +1213,92 @@ skip_32_entry(<<_:32, Rest/binary>>, Z1, Z2, F1,
 skip_64_entry(<<_:64, Rest/binary>>, Z1, Z2, F1,
 	      TrUserData) ->
     dfp_read_field_def_entry(Rest, Z1, Z2, F1, TrUserData).
+
+
+d_msg_list(Bin, TrUserData) ->
+    dfp_read_field_def_list(Bin, 0, 0, id([], TrUserData),
+			    TrUserData).
+
+dfp_read_field_def_list(<<10, Rest/binary>>, Z1, Z2, F1,
+			TrUserData) ->
+    d_field_list_elems(Rest, Z1, Z2, F1, TrUserData);
+dfp_read_field_def_list(<<>>, 0, 0, F1, TrUserData) ->
+    #list{elems = lists_reverse(F1, TrUserData)};
+dfp_read_field_def_list(Other, Z1, Z2, F1,
+			TrUserData) ->
+    dg_read_field_def_list(Other, Z1, Z2, F1, TrUserData).
+
+dg_read_field_def_list(<<1:1, X:7, Rest/binary>>, N,
+		       Acc, F1, TrUserData)
+    when N < 32 - 7 ->
+    dg_read_field_def_list(Rest, N + 7, X bsl N + Acc, F1,
+			   TrUserData);
+dg_read_field_def_list(<<0:1, X:7, Rest/binary>>, N,
+		       Acc, F1, TrUserData) ->
+    Key = X bsl N + Acc,
+    case Key of
+      10 -> d_field_list_elems(Rest, 0, 0, F1, TrUserData);
+      _ ->
+	  case Key band 7 of
+	    0 -> skip_varint_list(Rest, 0, 0, F1, TrUserData);
+	    1 -> skip_64_list(Rest, 0, 0, F1, TrUserData);
+	    2 ->
+		skip_length_delimited_list(Rest, 0, 0, F1, TrUserData);
+	    3 ->
+		skip_group_list(Rest, Key bsr 3, 0, F1, TrUserData);
+	    5 -> skip_32_list(Rest, 0, 0, F1, TrUserData)
+	  end
+    end;
+dg_read_field_def_list(<<>>, 0, 0, F1, TrUserData) ->
+    #list{elems = lists_reverse(F1, TrUserData)}.
+
+d_field_list_elems(<<1:1, X:7, Rest/binary>>, N, Acc,
+		   F1, TrUserData)
+    when N < 57 ->
+    d_field_list_elems(Rest, N + 7, X bsl N + Acc, F1,
+		       TrUserData);
+d_field_list_elems(<<0:1, X:7, Rest/binary>>, N, Acc,
+		   F1, TrUserData) ->
+    Len = X bsl N + Acc,
+    <<Bs:Len/binary, Rest2/binary>> = Rest,
+    NewFValue = id(d_msg_entry(Bs, TrUserData), TrUserData),
+    dfp_read_field_def_list(Rest2, 0, 0,
+			    cons(NewFValue, F1, TrUserData), TrUserData).
+
+
+skip_varint_list(<<1:1, _:7, Rest/binary>>, Z1, Z2, F1,
+		 TrUserData) ->
+    skip_varint_list(Rest, Z1, Z2, F1, TrUserData);
+skip_varint_list(<<0:1, _:7, Rest/binary>>, Z1, Z2, F1,
+		 TrUserData) ->
+    dfp_read_field_def_list(Rest, Z1, Z2, F1, TrUserData).
+
+
+skip_length_delimited_list(<<1:1, X:7, Rest/binary>>, N,
+			   Acc, F1, TrUserData)
+    when N < 57 ->
+    skip_length_delimited_list(Rest, N + 7, X bsl N + Acc,
+			       F1, TrUserData);
+skip_length_delimited_list(<<0:1, X:7, Rest/binary>>, N,
+			   Acc, F1, TrUserData) ->
+    Length = X bsl N + Acc,
+    <<_:Length/binary, Rest2/binary>> = Rest,
+    dfp_read_field_def_list(Rest2, 0, 0, F1, TrUserData).
+
+
+skip_group_list(Bin, FNum, Z2, F1, TrUserData) ->
+    {_, Rest} = read_group(Bin, FNum),
+    dfp_read_field_def_list(Rest, 0, Z2, F1, TrUserData).
+
+
+skip_32_list(<<_:32, Rest/binary>>, Z1, Z2, F1,
+	     TrUserData) ->
+    dfp_read_field_def_list(Rest, Z1, Z2, F1, TrUserData).
+
+
+skip_64_list(<<_:64, Rest/binary>>, Z1, Z2, F1,
+	     TrUserData) ->
+    dfp_read_field_def_list(Rest, Z1, Z2, F1, TrUserData).
 
 
 d_msg_pair(Bin, TrUserData) ->
@@ -1346,6 +1569,188 @@ skip_64_triple(<<_:64, Rest/binary>>, Z1, Z2, F1, F2,
 	       F3, TrUserData) ->
     dfp_read_field_def_triple(Rest, Z1, Z2, F1, F2, F3,
 			      TrUserData).
+
+
+d_msg_quad(Bin, TrUserData) ->
+    dfp_read_field_def_quad(Bin, 0, 0,
+			    id(undefined, TrUserData),
+			    id(undefined, TrUserData),
+			    id(undefined, TrUserData),
+			    id(undefined, TrUserData), TrUserData).
+
+dfp_read_field_def_quad(<<10, Rest/binary>>, Z1, Z2, F1,
+			F2, F3, F4, TrUserData) ->
+    d_field_quad_a(Rest, Z1, Z2, F1, F2, F3, F4,
+		   TrUserData);
+dfp_read_field_def_quad(<<18, Rest/binary>>, Z1, Z2, F1,
+			F2, F3, F4, TrUserData) ->
+    d_field_quad_b(Rest, Z1, Z2, F1, F2, F3, F4,
+		   TrUserData);
+dfp_read_field_def_quad(<<26, Rest/binary>>, Z1, Z2, F1,
+			F2, F3, F4, TrUserData) ->
+    d_field_quad_c(Rest, Z1, Z2, F1, F2, F3, F4,
+		   TrUserData);
+dfp_read_field_def_quad(<<34, Rest/binary>>, Z1, Z2, F1,
+			F2, F3, F4, TrUserData) ->
+    d_field_quad_d(Rest, Z1, Z2, F1, F2, F3, F4,
+		   TrUserData);
+dfp_read_field_def_quad(<<>>, 0, 0, F1, F2, F3, F4,
+			_) ->
+    #quad{a = F1, b = F2, c = F3, d = F4};
+dfp_read_field_def_quad(Other, Z1, Z2, F1, F2, F3, F4,
+			TrUserData) ->
+    dg_read_field_def_quad(Other, Z1, Z2, F1, F2, F3, F4,
+			   TrUserData).
+
+dg_read_field_def_quad(<<1:1, X:7, Rest/binary>>, N,
+		       Acc, F1, F2, F3, F4, TrUserData)
+    when N < 32 - 7 ->
+    dg_read_field_def_quad(Rest, N + 7, X bsl N + Acc, F1,
+			   F2, F3, F4, TrUserData);
+dg_read_field_def_quad(<<0:1, X:7, Rest/binary>>, N,
+		       Acc, F1, F2, F3, F4, TrUserData) ->
+    Key = X bsl N + Acc,
+    case Key of
+      10 ->
+	  d_field_quad_a(Rest, 0, 0, F1, F2, F3, F4, TrUserData);
+      18 ->
+	  d_field_quad_b(Rest, 0, 0, F1, F2, F3, F4, TrUserData);
+      26 ->
+	  d_field_quad_c(Rest, 0, 0, F1, F2, F3, F4, TrUserData);
+      34 ->
+	  d_field_quad_d(Rest, 0, 0, F1, F2, F3, F4, TrUserData);
+      _ ->
+	  case Key band 7 of
+	    0 ->
+		skip_varint_quad(Rest, 0, 0, F1, F2, F3, F4,
+				 TrUserData);
+	    1 ->
+		skip_64_quad(Rest, 0, 0, F1, F2, F3, F4, TrUserData);
+	    2 ->
+		skip_length_delimited_quad(Rest, 0, 0, F1, F2, F3, F4,
+					   TrUserData);
+	    3 ->
+		skip_group_quad(Rest, Key bsr 3, 0, F1, F2, F3, F4,
+				TrUserData);
+	    5 ->
+		skip_32_quad(Rest, 0, 0, F1, F2, F3, F4, TrUserData)
+	  end
+    end;
+dg_read_field_def_quad(<<>>, 0, 0, F1, F2, F3, F4, _) ->
+    #quad{a = F1, b = F2, c = F3, d = F4}.
+
+d_field_quad_a(<<1:1, X:7, Rest/binary>>, N, Acc, F1,
+	       F2, F3, F4, TrUserData)
+    when N < 57 ->
+    d_field_quad_a(Rest, N + 7, X bsl N + Acc, F1, F2, F3,
+		   F4, TrUserData);
+d_field_quad_a(<<0:1, X:7, Rest/binary>>, N, Acc, F1,
+	       F2, F3, F4, TrUserData) ->
+    Len = X bsl N + Acc,
+    <<Bs:Len/binary, Rest2/binary>> = Rest,
+    NewFValue = id(d_msg_entry(Bs, TrUserData), TrUserData),
+    dfp_read_field_def_quad(Rest2, 0, 0,
+			    if F1 == undefined -> NewFValue;
+			       true ->
+				   merge_msg_entry(F1, NewFValue, TrUserData)
+			    end,
+			    F2, F3, F4, TrUserData).
+
+
+d_field_quad_b(<<1:1, X:7, Rest/binary>>, N, Acc, F1,
+	       F2, F3, F4, TrUserData)
+    when N < 57 ->
+    d_field_quad_b(Rest, N + 7, X bsl N + Acc, F1, F2, F3,
+		   F4, TrUserData);
+d_field_quad_b(<<0:1, X:7, Rest/binary>>, N, Acc, F1,
+	       F2, F3, F4, TrUserData) ->
+    Len = X bsl N + Acc,
+    <<Bs:Len/binary, Rest2/binary>> = Rest,
+    NewFValue = id(d_msg_entry(Bs, TrUserData), TrUserData),
+    dfp_read_field_def_quad(Rest2, 0, 0, F1,
+			    if F2 == undefined -> NewFValue;
+			       true ->
+				   merge_msg_entry(F2, NewFValue, TrUserData)
+			    end,
+			    F3, F4, TrUserData).
+
+
+d_field_quad_c(<<1:1, X:7, Rest/binary>>, N, Acc, F1,
+	       F2, F3, F4, TrUserData)
+    when N < 57 ->
+    d_field_quad_c(Rest, N + 7, X bsl N + Acc, F1, F2, F3,
+		   F4, TrUserData);
+d_field_quad_c(<<0:1, X:7, Rest/binary>>, N, Acc, F1,
+	       F2, F3, F4, TrUserData) ->
+    Len = X bsl N + Acc,
+    <<Bs:Len/binary, Rest2/binary>> = Rest,
+    NewFValue = id(d_msg_entry(Bs, TrUserData), TrUserData),
+    dfp_read_field_def_quad(Rest2, 0, 0, F1, F2,
+			    if F3 == undefined -> NewFValue;
+			       true ->
+				   merge_msg_entry(F3, NewFValue, TrUserData)
+			    end,
+			    F4, TrUserData).
+
+
+d_field_quad_d(<<1:1, X:7, Rest/binary>>, N, Acc, F1,
+	       F2, F3, F4, TrUserData)
+    when N < 57 ->
+    d_field_quad_d(Rest, N + 7, X bsl N + Acc, F1, F2, F3,
+		   F4, TrUserData);
+d_field_quad_d(<<0:1, X:7, Rest/binary>>, N, Acc, F1,
+	       F2, F3, F4, TrUserData) ->
+    Len = X bsl N + Acc,
+    <<Bs:Len/binary, Rest2/binary>> = Rest,
+    NewFValue = id(d_msg_entry(Bs, TrUserData), TrUserData),
+    dfp_read_field_def_quad(Rest2, 0, 0, F1, F2, F3,
+			    if F4 == undefined -> NewFValue;
+			       true ->
+				   merge_msg_entry(F4, NewFValue, TrUserData)
+			    end,
+			    TrUserData).
+
+
+skip_varint_quad(<<1:1, _:7, Rest/binary>>, Z1, Z2, F1,
+		 F2, F3, F4, TrUserData) ->
+    skip_varint_quad(Rest, Z1, Z2, F1, F2, F3, F4,
+		     TrUserData);
+skip_varint_quad(<<0:1, _:7, Rest/binary>>, Z1, Z2, F1,
+		 F2, F3, F4, TrUserData) ->
+    dfp_read_field_def_quad(Rest, Z1, Z2, F1, F2, F3, F4,
+			    TrUserData).
+
+
+skip_length_delimited_quad(<<1:1, X:7, Rest/binary>>, N,
+			   Acc, F1, F2, F3, F4, TrUserData)
+    when N < 57 ->
+    skip_length_delimited_quad(Rest, N + 7, X bsl N + Acc,
+			       F1, F2, F3, F4, TrUserData);
+skip_length_delimited_quad(<<0:1, X:7, Rest/binary>>, N,
+			   Acc, F1, F2, F3, F4, TrUserData) ->
+    Length = X bsl N + Acc,
+    <<_:Length/binary, Rest2/binary>> = Rest,
+    dfp_read_field_def_quad(Rest2, 0, 0, F1, F2, F3, F4,
+			    TrUserData).
+
+
+skip_group_quad(Bin, FNum, Z2, F1, F2, F3, F4,
+		TrUserData) ->
+    {_, Rest} = read_group(Bin, FNum),
+    dfp_read_field_def_quad(Rest, 0, Z2, F1, F2, F3, F4,
+			    TrUserData).
+
+
+skip_32_quad(<<_:32, Rest/binary>>, Z1, Z2, F1, F2, F3,
+	     F4, TrUserData) ->
+    dfp_read_field_def_quad(Rest, Z1, Z2, F1, F2, F3, F4,
+			    TrUserData).
+
+
+skip_64_quad(<<_:64, Rest/binary>>, Z1, Z2, F1, F2, F3,
+	     F4, TrUserData) ->
+    dfp_read_field_def_quad(Rest, Z1, Z2, F1, F2, F3, F4,
+			    TrUserData).
 
 
 d_msg_reqresp(Bin, TrUserData) ->
@@ -2084,16 +2489,16 @@ d_msg_mapfield(Bin, TrUserData) ->
 
 dfp_read_field_def_mapfield(<<10, Rest/binary>>, Z1, Z2,
 			    F1, TrUserData) ->
-    d_field_mapfield_c(Rest, Z1, Z2, F1, TrUserData);
+    d_field_mapfield_ctr(Rest, Z1, Z2, F1, TrUserData);
 dfp_read_field_def_mapfield(<<18, Rest/binary>>, Z1, Z2,
 			    F1, TrUserData) ->
-    d_field_mapfield_s(Rest, Z1, Z2, F1, TrUserData);
+    d_field_mapfield_set(Rest, Z1, Z2, F1, TrUserData);
 dfp_read_field_def_mapfield(<<26, Rest/binary>>, Z1, Z2,
 			    F1, TrUserData) ->
-    d_field_mapfield_m(Rest, Z1, Z2, F1, TrUserData);
+    d_field_mapfield_map(Rest, Z1, Z2, F1, TrUserData);
 dfp_read_field_def_mapfield(<<34, Rest/binary>>, Z1, Z2,
 			    F1, TrUserData) ->
-    d_field_mapfield_r(Rest, Z1, Z2, F1, TrUserData);
+    d_field_mapfield_reg(Rest, Z1, Z2, F1, TrUserData);
 dfp_read_field_def_mapfield(<<>>, 0, 0, F1, _) ->
     #mapfield{v = F1};
 dfp_read_field_def_mapfield(Other, Z1, Z2, F1,
@@ -2110,10 +2515,10 @@ dg_read_field_def_mapfield(<<0:1, X:7, Rest/binary>>, N,
 			   Acc, F1, TrUserData) ->
     Key = X bsl N + Acc,
     case Key of
-      10 -> d_field_mapfield_c(Rest, 0, 0, F1, TrUserData);
-      18 -> d_field_mapfield_s(Rest, 0, 0, F1, TrUserData);
-      26 -> d_field_mapfield_m(Rest, 0, 0, F1, TrUserData);
-      34 -> d_field_mapfield_r(Rest, 0, 0, F1, TrUserData);
+      10 -> d_field_mapfield_ctr(Rest, 0, 0, F1, TrUserData);
+      18 -> d_field_mapfield_set(Rest, 0, 0, F1, TrUserData);
+      26 -> d_field_mapfield_map(Rest, 0, 0, F1, TrUserData);
+      34 -> d_field_mapfield_reg(Rest, 0, 0, F1, TrUserData);
       _ ->
 	  case Key band 7 of
 	    0 -> skip_varint_mapfield(Rest, 0, 0, F1, TrUserData);
@@ -2129,94 +2534,94 @@ dg_read_field_def_mapfield(<<0:1, X:7, Rest/binary>>, N,
 dg_read_field_def_mapfield(<<>>, 0, 0, F1, _) ->
     #mapfield{v = F1}.
 
-d_field_mapfield_c(<<1:1, X:7, Rest/binary>>, N, Acc,
-		   F1, TrUserData)
+d_field_mapfield_ctr(<<1:1, X:7, Rest/binary>>, N, Acc,
+		     F1, TrUserData)
     when N < 57 ->
-    d_field_mapfield_c(Rest, N + 7, X bsl N + Acc, F1,
-		       TrUserData);
-d_field_mapfield_c(<<0:1, X:7, Rest/binary>>, N, Acc,
-		   F1, TrUserData) ->
+    d_field_mapfield_ctr(Rest, N + 7, X bsl N + Acc, F1,
+			 TrUserData);
+d_field_mapfield_ctr(<<0:1, X:7, Rest/binary>>, N, Acc,
+		     F1, TrUserData) ->
     Len = X bsl N + Acc,
     <<Bs:Len/binary, Rest2/binary>> = Rest,
     NewFValue = id(d_msg_valcounter(Bs, TrUserData),
 		   TrUserData),
     dfp_read_field_def_mapfield(Rest2, 0, 0,
 				case F1 of
-				  undefined -> {c, NewFValue};
-				  {c, MVF1} ->
-				      {c,
+				  undefined -> {ctr, NewFValue};
+				  {ctr, MVF1} ->
+				      {ctr,
 				       merge_msg_valcounter(MVF1, NewFValue,
 							    TrUserData)};
-				  _ -> {c, NewFValue}
+				  _ -> {ctr, NewFValue}
 				end,
 				TrUserData).
 
 
-d_field_mapfield_s(<<1:1, X:7, Rest/binary>>, N, Acc,
-		   F1, TrUserData)
+d_field_mapfield_set(<<1:1, X:7, Rest/binary>>, N, Acc,
+		     F1, TrUserData)
     when N < 57 ->
-    d_field_mapfield_s(Rest, N + 7, X bsl N + Acc, F1,
-		       TrUserData);
-d_field_mapfield_s(<<0:1, X:7, Rest/binary>>, N, Acc,
-		   F1, TrUserData) ->
+    d_field_mapfield_set(Rest, N + 7, X bsl N + Acc, F1,
+			 TrUserData);
+d_field_mapfield_set(<<0:1, X:7, Rest/binary>>, N, Acc,
+		     F1, TrUserData) ->
     Len = X bsl N + Acc,
     <<Bs:Len/binary, Rest2/binary>> = Rest,
     NewFValue = id(d_msg_valset(Bs, TrUserData),
 		   TrUserData),
     dfp_read_field_def_mapfield(Rest2, 0, 0,
 				case F1 of
-				  undefined -> {s, NewFValue};
-				  {s, MVF1} ->
-				      {s,
+				  undefined -> {set, NewFValue};
+				  {set, MVF1} ->
+				      {set,
 				       merge_msg_valset(MVF1, NewFValue,
 							TrUserData)};
-				  _ -> {s, NewFValue}
+				  _ -> {set, NewFValue}
 				end,
 				TrUserData).
 
 
-d_field_mapfield_m(<<1:1, X:7, Rest/binary>>, N, Acc,
-		   F1, TrUserData)
+d_field_mapfield_map(<<1:1, X:7, Rest/binary>>, N, Acc,
+		     F1, TrUserData)
     when N < 57 ->
-    d_field_mapfield_m(Rest, N + 7, X bsl N + Acc, F1,
-		       TrUserData);
-d_field_mapfield_m(<<0:1, X:7, Rest/binary>>, N, Acc,
-		   F1, TrUserData) ->
+    d_field_mapfield_map(Rest, N + 7, X bsl N + Acc, F1,
+			 TrUserData);
+d_field_mapfield_map(<<0:1, X:7, Rest/binary>>, N, Acc,
+		     F1, TrUserData) ->
     Len = X bsl N + Acc,
     <<Bs:Len/binary, Rest2/binary>> = Rest,
     NewFValue = id(d_msg_valmap(Bs, TrUserData),
 		   TrUserData),
     dfp_read_field_def_mapfield(Rest2, 0, 0,
 				case F1 of
-				  undefined -> {m, NewFValue};
-				  {m, MVF1} ->
-				      {m,
+				  undefined -> {map, NewFValue};
+				  {map, MVF1} ->
+				      {map,
 				       merge_msg_valmap(MVF1, NewFValue,
 							TrUserData)};
-				  _ -> {m, NewFValue}
+				  _ -> {map, NewFValue}
 				end,
 				TrUserData).
 
 
-d_field_mapfield_r(<<1:1, X:7, Rest/binary>>, N, Acc,
-		   F1, TrUserData)
+d_field_mapfield_reg(<<1:1, X:7, Rest/binary>>, N, Acc,
+		     F1, TrUserData)
     when N < 57 ->
-    d_field_mapfield_r(Rest, N + 7, X bsl N + Acc, F1,
-		       TrUserData);
-d_field_mapfield_r(<<0:1, X:7, Rest/binary>>, N, Acc,
-		   F1, TrUserData) ->
+    d_field_mapfield_reg(Rest, N + 7, X bsl N + Acc, F1,
+			 TrUserData);
+d_field_mapfield_reg(<<0:1, X:7, Rest/binary>>, N, Acc,
+		     F1, TrUserData) ->
     Len = X bsl N + Acc,
     <<Bs:Len/binary, Rest2/binary>> = Rest,
     NewFValue = id(d_msg_valreg(Bs, TrUserData),
 		   TrUserData),
     dfp_read_field_def_mapfield(Rest2, 0, 0,
 				case F1 of
-				  undefined -> {r, NewFValue};
-				  {r, MVF1} ->
-				      {r,
+				  undefined -> {reg, NewFValue};
+				  {reg, MVF1} ->
+				      {reg,
 				       merge_msg_valreg(MVF1, NewFValue,
 							TrUserData)};
-				  _ -> {r, NewFValue}
+				  _ -> {reg, NewFValue}
 				end,
 				TrUserData).
 
@@ -2335,8 +2740,10 @@ merge_msgs(Prev, New, Opts)
       #opupdate{} ->
 	  merge_msg_opupdate(Prev, New, TrUserData);
       #entry{} -> merge_msg_entry(Prev, New, TrUserData);
+      #list{} -> merge_msg_list(Prev, New, TrUserData);
       #pair{} -> merge_msg_pair(Prev, New, TrUserData);
       #triple{} -> merge_msg_triple(Prev, New, TrUserData);
+      #quad{} -> merge_msg_quad(Prev, New, TrUserData);
       #reqresp{} -> merge_msg_reqresp(Prev, New, TrUserData);
       #valcounter{} ->
 	  merge_msg_valcounter(Prev, New, TrUserData);
@@ -2375,7 +2782,7 @@ merge_msg_opupdate(#opupdate{k = PFk, e = PFe},
 		  end,
 	      e =
 		  if PFe /= undefined, NFe /= undefined ->
-			 'erlang_++'(PFe, NFe, TrUserData);
+			 merge_msg_entry(PFe, NFe, TrUserData);
 		     PFe == undefined -> NFe;
 		     NFe == undefined -> PFe
 		  end,
@@ -2385,13 +2792,26 @@ merge_msg_entry(#entry{u = PFu}, #entry{u = NFu},
 		TrUserData) ->
     #entry{u =
 	       case {PFu, NFu} of
+		 {{list, OPFu}, {list, ONFu}} ->
+		     {list, merge_msg_list(OPFu, ONFu, TrUserData)};
 		 {{ii, OPFu}, {ii, ONFu}} ->
 		     {ii, merge_msg_pair(OPFu, ONFu, TrUserData)};
 		 {{iii, OPFu}, {iii, ONFu}} ->
 		     {iii, merge_msg_triple(OPFu, ONFu, TrUserData)};
+		 {{iv, OPFu}, {iv, ONFu}} ->
+		     {iv, merge_msg_quad(OPFu, ONFu, TrUserData)};
 		 {_, undefined} -> PFu;
 		 _ -> NFu
 	       end}.
+
+merge_msg_list(#list{elems = PFelems},
+	       #list{elems = NFelems}, TrUserData) ->
+    #list{elems =
+	      if PFelems /= undefined, NFelems /= undefined ->
+		     'erlang_++'(PFelems, NFelems, TrUserData);
+		 PFelems == undefined -> NFelems;
+		 NFelems == undefined -> PFelems
+	      end}.
 
 merge_msg_pair(#pair{a = PFa, b = PFb},
 	       #pair{a = NFa, b = NFb}, TrUserData) ->
@@ -2428,6 +2848,35 @@ merge_msg_triple(#triple{a = PFa, b = PFb, c = PFc},
 		   PFc == undefined -> NFc;
 		   NFc == undefined -> PFc
 		end}.
+
+merge_msg_quad(#quad{a = PFa, b = PFb, c = PFc,
+		     d = PFd},
+	       #quad{a = NFa, b = NFb, c = NFc, d = NFd},
+	       TrUserData) ->
+    #quad{a =
+	      if PFa /= undefined, NFa /= undefined ->
+		     merge_msg_entry(PFa, NFa, TrUserData);
+		 PFa == undefined -> NFa;
+		 NFa == undefined -> PFa
+	      end,
+	  b =
+	      if PFb /= undefined, NFb /= undefined ->
+		     merge_msg_entry(PFb, NFb, TrUserData);
+		 PFb == undefined -> NFb;
+		 NFb == undefined -> PFb
+	      end,
+	  c =
+	      if PFc /= undefined, NFc /= undefined ->
+		     merge_msg_entry(PFc, NFc, TrUserData);
+		 PFc == undefined -> NFc;
+		 NFc == undefined -> PFc
+	      end,
+	  d =
+	      if PFd /= undefined, NFd /= undefined ->
+		     merge_msg_entry(PFd, NFd, TrUserData);
+		 PFd == undefined -> NFd;
+		 NFd == undefined -> PFd
+	      end}.
 
 merge_msg_reqresp(#reqresp{v = PFv}, #reqresp{v = NFv},
 		  TrUserData) ->
@@ -2485,14 +2934,14 @@ merge_msg_mapfield(#mapfield{v = PFv},
 		   #mapfield{v = NFv}, TrUserData) ->
     #mapfield{v =
 		  case {PFv, NFv} of
-		    {{c, OPFv}, {c, ONFv}} ->
-			{c, merge_msg_valcounter(OPFv, ONFv, TrUserData)};
-		    {{s, OPFv}, {s, ONFv}} ->
-			{s, merge_msg_valset(OPFv, ONFv, TrUserData)};
-		    {{m, OPFv}, {m, ONFv}} ->
-			{m, merge_msg_valmap(OPFv, ONFv, TrUserData)};
-		    {{r, OPFv}, {r, ONFv}} ->
-			{r, merge_msg_valreg(OPFv, ONFv, TrUserData)};
+		    {{ctr, OPFv}, {ctr, ONFv}} ->
+			{ctr, merge_msg_valcounter(OPFv, ONFv, TrUserData)};
+		    {{set, OPFv}, {set, ONFv}} ->
+			{set, merge_msg_valset(OPFv, ONFv, TrUserData)};
+		    {{map, OPFv}, {map, ONFv}} ->
+			{map, merge_msg_valmap(OPFv, ONFv, TrUserData)};
+		    {{reg, OPFv}, {reg, ONFv}} ->
+			{reg, merge_msg_valreg(OPFv, ONFv, TrUserData)};
 		    {_, undefined} -> PFv;
 		    _ -> NFv
 		  end}.
@@ -2509,8 +2958,10 @@ verify_msg(Msg, Opts) ->
       #opupdate{} ->
 	  v_msg_opupdate(Msg, [opupdate], TrUserData);
       #entry{} -> v_msg_entry(Msg, [entry], TrUserData);
+      #list{} -> v_msg_list(Msg, [list], TrUserData);
       #pair{} -> v_msg_pair(Msg, [pair], TrUserData);
       #triple{} -> v_msg_triple(Msg, [triple], TrUserData);
+      #quad{} -> v_msg_quad(Msg, [quad], TrUserData);
       #reqresp{} -> v_msg_reqresp(Msg, [reqresp], TrUserData);
       #valcounter{} ->
 	  v_msg_valcounter(Msg, [valcounter], TrUserData);
@@ -2549,14 +3000,7 @@ v_msg_opget(X, Path, _TrUserData) ->
 v_msg_opupdate(#opupdate{k = F1, e = F2, actor = F3},
 	       Path, TrUserData) ->
     v_msg_opget(F1, [k | Path], TrUserData),
-    if is_list(F2) ->
-	   _ = [v_msg_entry(Elem, [e | Path], TrUserData)
-		|| Elem <- F2],
-	   ok;
-       true ->
-	   mk_type_error({invalid_list_of, {msg, entry}}, F2,
-			 [e | Path])
-    end,
+    v_msg_entry(F2, [e | Path], TrUserData),
     v_type_string(F3, [actor | Path]),
     ok;
 v_msg_opupdate(X, Path, _TrUserData) ->
@@ -2569,15 +3013,33 @@ v_msg_entry(#entry{u = F1}, Path, TrUserData) ->
       {int, OF1} -> v_type_int64(OF1, [int, u | Path]);
       {str, OF1} -> v_type_string(OF1, [str, u | Path]);
       {atm, OF1} -> v_type_string(OF1, [atm, u | Path]);
+      {list, OF1} ->
+	  v_msg_list(OF1, [list, u | Path], TrUserData);
       {ii, OF1} ->
 	  v_msg_pair(OF1, [ii, u | Path], TrUserData);
       {iii, OF1} ->
 	  v_msg_triple(OF1, [iii, u | Path], TrUserData);
+      {iv, OF1} ->
+	  v_msg_quad(OF1, [iv, u | Path], TrUserData);
       _ -> mk_type_error(invalid_oneof, F1, [u | Path])
     end,
     ok;
 v_msg_entry(X, Path, _TrUserData) ->
     mk_type_error({expected_msg, entry}, X, Path).
+
+-dialyzer({nowarn_function,v_msg_list/3}).
+v_msg_list(#list{elems = F1}, Path, TrUserData) ->
+    if is_list(F1) ->
+	   _ = [v_msg_entry(Elem, [elems | Path], TrUserData)
+		|| Elem <- F1],
+	   ok;
+       true ->
+	   mk_type_error({invalid_list_of, {msg, entry}}, F1,
+			 [elems | Path])
+    end,
+    ok;
+v_msg_list(X, Path, _TrUserData) ->
+    mk_type_error({expected_msg, list}, X, Path).
 
 -dialyzer({nowarn_function,v_msg_pair/3}).
 v_msg_pair(#pair{a = F1, b = F2}, Path, TrUserData) ->
@@ -2596,6 +3058,17 @@ v_msg_triple(#triple{a = F1, b = F2, c = F3}, Path,
     ok;
 v_msg_triple(X, Path, _TrUserData) ->
     mk_type_error({expected_msg, triple}, X, Path).
+
+-dialyzer({nowarn_function,v_msg_quad/3}).
+v_msg_quad(#quad{a = F1, b = F2, c = F3, d = F4}, Path,
+	   TrUserData) ->
+    v_msg_entry(F1, [a | Path], TrUserData),
+    v_msg_entry(F2, [b | Path], TrUserData),
+    v_msg_entry(F3, [c | Path], TrUserData),
+    v_msg_entry(F4, [d | Path], TrUserData),
+    ok;
+v_msg_quad(X, Path, _TrUserData) ->
+    mk_type_error({expected_msg, quad}, X, Path).
 
 -dialyzer({nowarn_function,v_msg_reqresp/3}).
 v_msg_reqresp(#reqresp{v = F1}, Path, TrUserData) ->
@@ -2669,14 +3142,14 @@ v_msg_mapentry(X, Path, _TrUserData) ->
 v_msg_mapfield(#mapfield{v = F1}, Path, TrUserData) ->
     case F1 of
       undefined -> ok;
-      {c, OF1} ->
-	  v_msg_valcounter(OF1, [c, v | Path], TrUserData);
-      {s, OF1} ->
-	  v_msg_valset(OF1, [s, v | Path], TrUserData);
-      {m, OF1} ->
-	  v_msg_valmap(OF1, [m, v | Path], TrUserData);
-      {r, OF1} ->
-	  v_msg_valreg(OF1, [r, v | Path], TrUserData);
+      {ctr, OF1} ->
+	  v_msg_valcounter(OF1, [ctr, v | Path], TrUserData);
+      {set, OF1} ->
+	  v_msg_valset(OF1, [set, v | Path], TrUserData);
+      {map, OF1} ->
+	  v_msg_valmap(OF1, [map, v | Path], TrUserData);
+      {reg, OF1} ->
+	  v_msg_valreg(OF1, [reg, v | Path], TrUserData);
       _ -> mk_type_error(invalid_oneof, F1, [v | Path])
     end,
     ok;
@@ -2763,7 +3236,7 @@ get_msg_defs() ->
       [#field{name = k, fnum = 1, rnum = 2,
 	      type = {msg, opget}, occurrence = required, opts = []},
        #field{name = e, fnum = 2, rnum = 3,
-	      type = {msg, entry}, occurrence = repeated, opts = []},
+	      type = {msg, entry}, occurrence = required, opts = []},
        #field{name = actor, fnum = 3, rnum = 4, type = string,
 	      occurrence = required, opts = []}]},
      {{msg, entry},
@@ -2775,12 +3248,22 @@ get_msg_defs() ->
 			      occurrence = optional, opts = []},
 		       #field{name = atm, fnum = 3, rnum = 2, type = string,
 			      occurrence = optional, opts = []},
-		       #field{name = ii, fnum = 4, rnum = 2,
+		       #field{name = list, fnum = 4, rnum = 2,
+			      type = {msg, list}, occurrence = optional,
+			      opts = []},
+		       #field{name = ii, fnum = 5, rnum = 2,
 			      type = {msg, pair}, occurrence = optional,
 			      opts = []},
-		       #field{name = iii, fnum = 5, rnum = 2,
+		       #field{name = iii, fnum = 6, rnum = 2,
 			      type = {msg, triple}, occurrence = optional,
+			      opts = []},
+		       #field{name = iv, fnum = 7, rnum = 2,
+			      type = {msg, quad}, occurrence = optional,
 			      opts = []}]}]},
+     {{msg, list},
+      [#field{name = elems, fnum = 1, rnum = 2,
+	      type = {msg, entry}, occurrence = repeated,
+	      opts = []}]},
      {{msg, pair},
       [#field{name = a, fnum = 1, rnum = 2,
 	      type = {msg, entry}, occurrence = required, opts = []},
@@ -2793,6 +3276,16 @@ get_msg_defs() ->
        #field{name = b, fnum = 2, rnum = 3,
 	      type = {msg, entry}, occurrence = required, opts = []},
        #field{name = c, fnum = 3, rnum = 4,
+	      type = {msg, entry}, occurrence = required,
+	      opts = []}]},
+     {{msg, quad},
+      [#field{name = a, fnum = 1, rnum = 2,
+	      type = {msg, entry}, occurrence = required, opts = []},
+       #field{name = b, fnum = 2, rnum = 3,
+	      type = {msg, entry}, occurrence = required, opts = []},
+       #field{name = c, fnum = 3, rnum = 4,
+	      type = {msg, entry}, occurrence = required, opts = []},
+       #field{name = d, fnum = 4, rnum = 5,
 	      type = {msg, entry}, occurrence = required,
 	      opts = []}]},
      {{msg, reqresp},
@@ -2838,31 +3331,33 @@ get_msg_defs() ->
      {{msg, mapfield},
       [#gpb_oneof{name = v, rnum = 2,
 		  fields =
-		      [#field{name = c, fnum = 1, rnum = 2,
+		      [#field{name = ctr, fnum = 1, rnum = 2,
 			      type = {msg, valcounter}, occurrence = optional,
 			      opts = []},
-		       #field{name = s, fnum = 2, rnum = 2,
+		       #field{name = set, fnum = 2, rnum = 2,
 			      type = {msg, valset}, occurrence = optional,
 			      opts = []},
-		       #field{name = m, fnum = 3, rnum = 2,
+		       #field{name = map, fnum = 3, rnum = 2,
 			      type = {msg, valmap}, occurrence = optional,
 			      opts = []},
-		       #field{name = r, fnum = 4, rnum = 2,
+		       #field{name = reg, fnum = 4, rnum = 2,
 			      type = {msg, valreg}, occurrence = optional,
 			      opts = []}]}]}].
 
 
 get_msg_names() ->
-    [req, opget, opupdate, entry, pair, triple, reqresp,
-     valcounter, valset, valmap, valreg, mapentry, mapfield].
+    [req, opget, opupdate, entry, list, pair, triple, quad,
+     reqresp, valcounter, valset, valmap, valreg, mapentry,
+     mapfield].
 
 
 get_group_names() -> [].
 
 
 get_msg_or_group_names() ->
-    [req, opget, opupdate, entry, pair, triple, reqresp,
-     valcounter, valset, valmap, valreg, mapentry, mapfield].
+    [req, opget, opupdate, entry, list, pair, triple, quad,
+     reqresp, valcounter, valset, valmap, valreg, mapentry,
+     mapfield].
 
 
 get_enum_names() -> [].
@@ -2898,7 +3393,7 @@ find_msg_def(opupdate) ->
     [#field{name = k, fnum = 1, rnum = 2,
 	    type = {msg, opget}, occurrence = required, opts = []},
      #field{name = e, fnum = 2, rnum = 3,
-	    type = {msg, entry}, occurrence = repeated, opts = []},
+	    type = {msg, entry}, occurrence = required, opts = []},
      #field{name = actor, fnum = 3, rnum = 4, type = string,
 	    occurrence = required, opts = []}];
 find_msg_def(entry) ->
@@ -2910,12 +3405,21 @@ find_msg_def(entry) ->
 			    occurrence = optional, opts = []},
 		     #field{name = atm, fnum = 3, rnum = 2, type = string,
 			    occurrence = optional, opts = []},
-		     #field{name = ii, fnum = 4, rnum = 2,
+		     #field{name = list, fnum = 4, rnum = 2,
+			    type = {msg, list}, occurrence = optional,
+			    opts = []},
+		     #field{name = ii, fnum = 5, rnum = 2,
 			    type = {msg, pair}, occurrence = optional,
 			    opts = []},
-		     #field{name = iii, fnum = 5, rnum = 2,
+		     #field{name = iii, fnum = 6, rnum = 2,
 			    type = {msg, triple}, occurrence = optional,
+			    opts = []},
+		     #field{name = iv, fnum = 7, rnum = 2,
+			    type = {msg, quad}, occurrence = optional,
 			    opts = []}]}];
+find_msg_def(list) ->
+    [#field{name = elems, fnum = 1, rnum = 2,
+	    type = {msg, entry}, occurrence = repeated, opts = []}];
 find_msg_def(pair) ->
     [#field{name = a, fnum = 1, rnum = 2,
 	    type = {msg, entry}, occurrence = required, opts = []},
@@ -2927,6 +3431,15 @@ find_msg_def(triple) ->
      #field{name = b, fnum = 2, rnum = 3,
 	    type = {msg, entry}, occurrence = required, opts = []},
      #field{name = c, fnum = 3, rnum = 4,
+	    type = {msg, entry}, occurrence = required, opts = []}];
+find_msg_def(quad) ->
+    [#field{name = a, fnum = 1, rnum = 2,
+	    type = {msg, entry}, occurrence = required, opts = []},
+     #field{name = b, fnum = 2, rnum = 3,
+	    type = {msg, entry}, occurrence = required, opts = []},
+     #field{name = c, fnum = 3, rnum = 4,
+	    type = {msg, entry}, occurrence = required, opts = []},
+     #field{name = d, fnum = 4, rnum = 5,
 	    type = {msg, entry}, occurrence = required, opts = []}];
 find_msg_def(reqresp) ->
     [#gpb_oneof{name = v, rnum = 2,
@@ -2971,16 +3484,16 @@ find_msg_def(mapentry) ->
 find_msg_def(mapfield) ->
     [#gpb_oneof{name = v, rnum = 2,
 		fields =
-		    [#field{name = c, fnum = 1, rnum = 2,
+		    [#field{name = ctr, fnum = 1, rnum = 2,
 			    type = {msg, valcounter}, occurrence = optional,
 			    opts = []},
-		     #field{name = s, fnum = 2, rnum = 2,
+		     #field{name = set, fnum = 2, rnum = 2,
 			    type = {msg, valset}, occurrence = optional,
 			    opts = []},
-		     #field{name = m, fnum = 3, rnum = 2,
+		     #field{name = map, fnum = 3, rnum = 2,
 			    type = {msg, valmap}, occurrence = optional,
 			    opts = []},
-		     #field{name = r, fnum = 4, rnum = 2,
+		     #field{name = reg, fnum = 4, rnum = 2,
 			    type = {msg, valreg}, occurrence = optional,
 			    opts = []}]}];
 find_msg_def(_) -> error.

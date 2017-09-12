@@ -96,20 +96,16 @@ e_msg_opupdate(Msg, TrUserData) ->
     e_msg_opupdate(Msg, <<>>, TrUserData).
 
 
-e_msg_opupdate(#opupdate{k = F1, e = F2, actor = F3},
-	       Bin, TrUserData) ->
+e_msg_opupdate(#opupdate{k = F1, e = F2}, Bin,
+	       TrUserData) ->
     B1 = begin
 	   TrF1 = id(F1, TrUserData),
 	   e_mfield_opupdate_k(TrF1, <<Bin/binary, 10>>,
 			       TrUserData)
 	 end,
-    B2 = begin
-	   TrF2 = id(F2, TrUserData),
-	   e_mfield_opupdate_e(TrF2, <<B1/binary, 18>>, TrUserData)
-	 end,
     begin
-      TrF3 = id(F3, TrUserData),
-      e_type_string(TrF3, <<B2/binary, 26>>)
+      TrF2 = id(F2, TrUserData),
+      e_mfield_opupdate_e(TrF2, <<B1/binary, 18>>, TrUserData)
     end.
 
 e_msg_entry(Msg, TrUserData) ->
@@ -834,72 +830,58 @@ skip_64_opget(<<_:64, Rest/binary>>, Z1, Z2, F1, F2,
 d_msg_opupdate(Bin, TrUserData) ->
     dfp_read_field_def_opupdate(Bin, 0, 0,
 				id(undefined, TrUserData),
-				id(undefined, TrUserData),
 				id(undefined, TrUserData), TrUserData).
 
 dfp_read_field_def_opupdate(<<10, Rest/binary>>, Z1, Z2,
-			    F1, F2, F3, TrUserData) ->
-    d_field_opupdate_k(Rest, Z1, Z2, F1, F2, F3,
-		       TrUserData);
+			    F1, F2, TrUserData) ->
+    d_field_opupdate_k(Rest, Z1, Z2, F1, F2, TrUserData);
 dfp_read_field_def_opupdate(<<18, Rest/binary>>, Z1, Z2,
-			    F1, F2, F3, TrUserData) ->
-    d_field_opupdate_e(Rest, Z1, Z2, F1, F2, F3,
-		       TrUserData);
-dfp_read_field_def_opupdate(<<26, Rest/binary>>, Z1, Z2,
-			    F1, F2, F3, TrUserData) ->
-    d_field_opupdate_actor(Rest, Z1, Z2, F1, F2, F3,
-			   TrUserData);
-dfp_read_field_def_opupdate(<<>>, 0, 0, F1, F2, F3,
-			    _) ->
-    #opupdate{k = F1, e = F2, actor = F3};
-dfp_read_field_def_opupdate(Other, Z1, Z2, F1, F2, F3,
+			    F1, F2, TrUserData) ->
+    d_field_opupdate_e(Rest, Z1, Z2, F1, F2, TrUserData);
+dfp_read_field_def_opupdate(<<>>, 0, 0, F1, F2, _) ->
+    #opupdate{k = F1, e = F2};
+dfp_read_field_def_opupdate(Other, Z1, Z2, F1, F2,
 			    TrUserData) ->
-    dg_read_field_def_opupdate(Other, Z1, Z2, F1, F2, F3,
+    dg_read_field_def_opupdate(Other, Z1, Z2, F1, F2,
 			       TrUserData).
 
 dg_read_field_def_opupdate(<<1:1, X:7, Rest/binary>>, N,
-			   Acc, F1, F2, F3, TrUserData)
+			   Acc, F1, F2, TrUserData)
     when N < 32 - 7 ->
     dg_read_field_def_opupdate(Rest, N + 7, X bsl N + Acc,
-			       F1, F2, F3, TrUserData);
+			       F1, F2, TrUserData);
 dg_read_field_def_opupdate(<<0:1, X:7, Rest/binary>>, N,
-			   Acc, F1, F2, F3, TrUserData) ->
+			   Acc, F1, F2, TrUserData) ->
     Key = X bsl N + Acc,
     case Key of
       10 ->
-	  d_field_opupdate_k(Rest, 0, 0, F1, F2, F3, TrUserData);
+	  d_field_opupdate_k(Rest, 0, 0, F1, F2, TrUserData);
       18 ->
-	  d_field_opupdate_e(Rest, 0, 0, F1, F2, F3, TrUserData);
-      26 ->
-	  d_field_opupdate_actor(Rest, 0, 0, F1, F2, F3,
-				 TrUserData);
+	  d_field_opupdate_e(Rest, 0, 0, F1, F2, TrUserData);
       _ ->
 	  case Key band 7 of
 	    0 ->
-		skip_varint_opupdate(Rest, 0, 0, F1, F2, F3,
-				     TrUserData);
-	    1 ->
-		skip_64_opupdate(Rest, 0, 0, F1, F2, F3, TrUserData);
+		skip_varint_opupdate(Rest, 0, 0, F1, F2, TrUserData);
+	    1 -> skip_64_opupdate(Rest, 0, 0, F1, F2, TrUserData);
 	    2 ->
-		skip_length_delimited_opupdate(Rest, 0, 0, F1, F2, F3,
+		skip_length_delimited_opupdate(Rest, 0, 0, F1, F2,
 					       TrUserData);
 	    3 ->
-		skip_group_opupdate(Rest, Key bsr 3, 0, F1, F2, F3,
+		skip_group_opupdate(Rest, Key bsr 3, 0, F1, F2,
 				    TrUserData);
-	    5 ->
-		skip_32_opupdate(Rest, 0, 0, F1, F2, F3, TrUserData)
+	    5 -> skip_32_opupdate(Rest, 0, 0, F1, F2, TrUserData)
 	  end
     end;
-dg_read_field_def_opupdate(<<>>, 0, 0, F1, F2, F3, _) ->
-    #opupdate{k = F1, e = F2, actor = F3}.
+dg_read_field_def_opupdate(<<>>, 0, 0, F1, F2, _) ->
+    #opupdate{k = F1, e = F2}.
 
 d_field_opupdate_k(<<1:1, X:7, Rest/binary>>, N, Acc,
-		   F1, F2, F3, TrUserData)
+		   F1, F2, TrUserData)
     when N < 57 ->
     d_field_opupdate_k(Rest, N + 7, X bsl N + Acc, F1, F2,
-		       F3, TrUserData);
+		       TrUserData);
 d_field_opupdate_k(<<0:1, X:7, Rest/binary>>, N, Acc,
-		   F1, F2, F3, TrUserData) ->
+		   F1, F2, TrUserData) ->
     Len = X bsl N + Acc,
     <<Bs:Len/binary, Rest2/binary>> = Rest,
     NewFValue = id(d_msg_opget(Bs, TrUserData), TrUserData),
@@ -909,16 +891,16 @@ d_field_opupdate_k(<<0:1, X:7, Rest/binary>>, N, Acc,
 				       merge_msg_opget(F1, NewFValue,
 						       TrUserData)
 				end,
-				F2, F3, TrUserData).
+				F2, TrUserData).
 
 
 d_field_opupdate_e(<<1:1, X:7, Rest/binary>>, N, Acc,
-		   F1, F2, F3, TrUserData)
+		   F1, F2, TrUserData)
     when N < 57 ->
     d_field_opupdate_e(Rest, N + 7, X bsl N + Acc, F1, F2,
-		       F3, TrUserData);
+		       TrUserData);
 d_field_opupdate_e(<<0:1, X:7, Rest/binary>>, N, Acc,
-		   F1, F2, F3, TrUserData) ->
+		   F1, F2, TrUserData) ->
     Len = X bsl N + Acc,
     <<Bs:Len/binary, Rest2/binary>> = Rest,
     NewFValue = id(d_msg_entry(Bs, TrUserData), TrUserData),
@@ -928,64 +910,49 @@ d_field_opupdate_e(<<0:1, X:7, Rest/binary>>, N, Acc,
 				       merge_msg_entry(F2, NewFValue,
 						       TrUserData)
 				end,
-				F3, TrUserData).
-
-
-d_field_opupdate_actor(<<1:1, X:7, Rest/binary>>, N,
-		       Acc, F1, F2, F3, TrUserData)
-    when N < 57 ->
-    d_field_opupdate_actor(Rest, N + 7, X bsl N + Acc, F1,
-			   F2, F3, TrUserData);
-d_field_opupdate_actor(<<0:1, X:7, Rest/binary>>, N,
-		       Acc, F1, F2, _, TrUserData) ->
-    Len = X bsl N + Acc,
-    <<Bytes:Len/binary, Rest2/binary>> = Rest,
-    NewFValue = binary:copy(Bytes),
-    dfp_read_field_def_opupdate(Rest2, 0, 0, F1, F2,
-				NewFValue, TrUserData).
+				TrUserData).
 
 
 skip_varint_opupdate(<<1:1, _:7, Rest/binary>>, Z1, Z2,
-		     F1, F2, F3, TrUserData) ->
-    skip_varint_opupdate(Rest, Z1, Z2, F1, F2, F3,
-			 TrUserData);
+		     F1, F2, TrUserData) ->
+    skip_varint_opupdate(Rest, Z1, Z2, F1, F2, TrUserData);
 skip_varint_opupdate(<<0:1, _:7, Rest/binary>>, Z1, Z2,
-		     F1, F2, F3, TrUserData) ->
-    dfp_read_field_def_opupdate(Rest, Z1, Z2, F1, F2, F3,
+		     F1, F2, TrUserData) ->
+    dfp_read_field_def_opupdate(Rest, Z1, Z2, F1, F2,
 				TrUserData).
 
 
 skip_length_delimited_opupdate(<<1:1, X:7,
 				 Rest/binary>>,
-			       N, Acc, F1, F2, F3, TrUserData)
+			       N, Acc, F1, F2, TrUserData)
     when N < 57 ->
     skip_length_delimited_opupdate(Rest, N + 7,
-				   X bsl N + Acc, F1, F2, F3, TrUserData);
+				   X bsl N + Acc, F1, F2, TrUserData);
 skip_length_delimited_opupdate(<<0:1, X:7,
 				 Rest/binary>>,
-			       N, Acc, F1, F2, F3, TrUserData) ->
+			       N, Acc, F1, F2, TrUserData) ->
     Length = X bsl N + Acc,
     <<_:Length/binary, Rest2/binary>> = Rest,
-    dfp_read_field_def_opupdate(Rest2, 0, 0, F1, F2, F3,
+    dfp_read_field_def_opupdate(Rest2, 0, 0, F1, F2,
 				TrUserData).
 
 
-skip_group_opupdate(Bin, FNum, Z2, F1, F2, F3,
+skip_group_opupdate(Bin, FNum, Z2, F1, F2,
 		    TrUserData) ->
     {_, Rest} = read_group(Bin, FNum),
-    dfp_read_field_def_opupdate(Rest, 0, Z2, F1, F2, F3,
+    dfp_read_field_def_opupdate(Rest, 0, Z2, F1, F2,
 				TrUserData).
 
 
 skip_32_opupdate(<<_:32, Rest/binary>>, Z1, Z2, F1, F2,
-		 F3, TrUserData) ->
-    dfp_read_field_def_opupdate(Rest, Z1, Z2, F1, F2, F3,
+		 TrUserData) ->
+    dfp_read_field_def_opupdate(Rest, Z1, Z2, F1, F2,
 				TrUserData).
 
 
 skip_64_opupdate(<<_:64, Rest/binary>>, Z1, Z2, F1, F2,
-		 F3, TrUserData) ->
-    dfp_read_field_def_opupdate(Rest, Z1, Z2, F1, F2, F3,
+		 TrUserData) ->
+    dfp_read_field_def_opupdate(Rest, Z1, Z2, F1, F2,
 				TrUserData).
 
 
@@ -2772,8 +2739,7 @@ merge_msg_opget(#opget{},
     #opget{key = NFkey, type = NFtype}.
 
 merge_msg_opupdate(#opupdate{k = PFk, e = PFe},
-		   #opupdate{k = NFk, e = NFe, actor = NFactor},
-		   TrUserData) ->
+		   #opupdate{k = NFk, e = NFe}, TrUserData) ->
     #opupdate{k =
 		  if PFk /= undefined, NFk /= undefined ->
 			 merge_msg_opget(PFk, NFk, TrUserData);
@@ -2785,8 +2751,7 @@ merge_msg_opupdate(#opupdate{k = PFk, e = PFe},
 			 merge_msg_entry(PFe, NFe, TrUserData);
 		     PFe == undefined -> NFe;
 		     NFe == undefined -> PFe
-		  end,
-	      actor = NFactor}.
+		  end}.
 
 merge_msg_entry(#entry{u = PFu}, #entry{u = NFu},
 		TrUserData) ->
@@ -2997,11 +2962,10 @@ v_msg_opget(X, Path, _TrUserData) ->
     mk_type_error({expected_msg, opget}, X, Path).
 
 -dialyzer({nowarn_function,v_msg_opupdate/3}).
-v_msg_opupdate(#opupdate{k = F1, e = F2, actor = F3},
-	       Path, TrUserData) ->
+v_msg_opupdate(#opupdate{k = F1, e = F2}, Path,
+	       TrUserData) ->
     v_msg_opget(F1, [k | Path], TrUserData),
     v_msg_entry(F2, [e | Path], TrUserData),
-    v_type_string(F3, [actor | Path]),
     ok;
 v_msg_opupdate(X, Path, _TrUserData) ->
     mk_type_error({expected_msg, opupdate}, X, Path).
@@ -3236,9 +3200,8 @@ get_msg_defs() ->
       [#field{name = k, fnum = 1, rnum = 2,
 	      type = {msg, opget}, occurrence = required, opts = []},
        #field{name = e, fnum = 2, rnum = 3,
-	      type = {msg, entry}, occurrence = required, opts = []},
-       #field{name = actor, fnum = 3, rnum = 4, type = string,
-	      occurrence = required, opts = []}]},
+	      type = {msg, entry}, occurrence = required,
+	      opts = []}]},
      {{msg, entry},
       [#gpb_oneof{name = u, rnum = 2,
 		  fields =
@@ -3393,9 +3356,7 @@ find_msg_def(opupdate) ->
     [#field{name = k, fnum = 1, rnum = 2,
 	    type = {msg, opget}, occurrence = required, opts = []},
      #field{name = e, fnum = 2, rnum = 3,
-	    type = {msg, entry}, occurrence = required, opts = []},
-     #field{name = actor, fnum = 3, rnum = 4, type = string,
-	    occurrence = required, opts = []}];
+	    type = {msg, entry}, occurrence = required, opts = []}];
 find_msg_def(entry) ->
     [#gpb_oneof{name = u, rnum = 2,
 		fields =

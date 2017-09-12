@@ -61,6 +61,6 @@ req_opget_test() ->
     ?assertEqual(Op, encode_decode(Op,req)).
 
 req_opupdate_test() ->
-    Op = {req, {put, {{"key", gcounter}, increment, node()}}},
+    Op = {req, {put, {{"key", gcounter}, increment}}},
     ?assertEqual(Op, encode_decode(Op,req)).
 -endif.

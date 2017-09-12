@@ -26,8 +26,7 @@
 -define('OPUPDATE_PB_H', true).
 -record(opupdate,
         {k,                             % = 1, {msg,opget}
-         e,                             % = 2, {msg,entry}
-         actor                          % = 3, string
+         e                              % = 2, {msg,entry}
         }).
 -endif.
 

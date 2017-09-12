@@ -25,7 +25,6 @@ message opget {
 message opupdate {
   required opget k = 1;
   required entry e = 2;
-  required string actor = 3;
 }
 
 message entry {

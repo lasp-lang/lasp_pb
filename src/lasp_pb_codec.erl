@@ -18,9 +18,8 @@
 %% Encoding operations
 encode({req, {ReqType, Req}}) -> #req{u = {ReqType, encode({ReqType, Req})}};
 encode({get, {Key, KeyType}}) -> #opget{key = Key, type = atom_to_list(KeyType)};
-encode({put, {Kid, Entry, Actor}}) -> #opupdate{k = encode({get, Kid}),
-                                                e = encode(Entry),
-                                                actor = atom_to_list(Actor)};
+encode({put, {Kid, Entry}}) -> #opupdate{k = encode({get, Kid}),
+                                                e = encode(Entry)};
 
 encode({response, Arg, Response}) ->
     case get_crdt_type(Arg) of
@@ -93,7 +92,7 @@ search_type(Type, [H|T]) ->
 
 decode(#reqresp{v = {error, Reason}}) ->      {response, error, binary_to_list(Reason)};
 decode(#reqresp{v = {success, Success}}) ->   {response, success, Success};
-decode(#reqresp{v = {Type, Record}}) ->      {response, decode(Record)};
+decode(#reqresp{v = {_Type, Record}}) ->      {response, decode(Record)};
 
 decode(#valreg{val = Value}) when is_atom(Value) ->     Value;
 decode(#valreg{val = Value}) when is_binary(Value) ->   binary_to_list(Value);
@@ -112,10 +111,9 @@ decode(#req{u = {_, Record}}) -> {req, decode(Record)};
 
 decode(#opget{key = K, type = T}) -> {get, {binary_to_list(K), decode_atom(T)}};
 
-decode(#opupdate{k = #opget{key = K, type = T}, e = Entry, actor = Actor}) ->
+decode(#opupdate{k = #opget{key = K, type = T}, e = Entry}) ->
     {put, { {binary_to_list(K), binary_to_atom(T, utf8)},
-            decode(Entry),
-            decode_atom(Actor)}};
+            decode(Entry)}};
 
 decode(#entry{u = {int, Val}}) -> Val;
 decode(#entry{u = {atm, BinAtom}}) -> binary_to_atom(BinAtom, utf8);
